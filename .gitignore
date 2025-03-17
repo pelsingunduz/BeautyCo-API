@@ -1,0 +1,6 @@
+# Sanal ortamı ve cache dosyalarını yok say
+venv/
+__pycache__/
+
+# Çevresel değişken dosyasını yok say
+.env
