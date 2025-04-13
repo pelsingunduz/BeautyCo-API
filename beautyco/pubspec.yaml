@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   logging: ^1.0.0  # logging paketini buraya ekleyin
-
+  google_fonts: ^6.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -20,3 +20,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/lorea_paris_sac_kremi.jpg

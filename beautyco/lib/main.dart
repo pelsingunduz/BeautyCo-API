@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart'; 
-import 'screens/login_screen.dart'; // LoginScreen dosyasını doğru içe aktardığınızdan emin olun
+import 'package:flutter/material.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/home_page.dart'; // HomePage'i import et
 
 void main() {
   runApp(const MyApp());
@@ -15,9 +17,14 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.purple,
+        scaffoldBackgroundColor: const Color(0xFFF9F9F9),
       ),
-      // Burada, ilk açılış ekranını LoginScreen yapıyoruz
-      home: const LoginScreen(),  // LoginScreen başlangıç ekranı olarak ayarlandı
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }

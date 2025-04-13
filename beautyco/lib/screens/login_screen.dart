@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart'; // Bu import satırını ekleyin
+import 'package:google_fonts/google_fonts.dart';
+import 'package:logging/logging.dart';
+import 'register_screen.dart';
 
-final Logger logger = Logger('LoginScreen'); // Logger'ı başlatıyoruz
+final Logger logger = Logger('LoginScreen');
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key); // Buradaki 'key' parametresini super’e ekliyoruz.
+  const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
@@ -18,38 +20,49 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF9F9F9),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 60),
-              const Text(
+              const SizedBox(height: 50),
+              const Icon(
+                Icons.spa_outlined,
+                size: 64,
+                color: Colors.black87,
+              ),
+              const SizedBox(height: 16),
+              Text(
                 'Beauty Co',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                   letterSpacing: 1.2,
                 ),
               ),
-              const SizedBox(height: 40),
-              const Text(
+              const SizedBox(height: 8),
+              Text(
                 'Hoş Geldiniz!',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
+                  color: Colors.black54,
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  hintText: 'Kullanıcı Adı',
+                  hintText: 'E-mail',
+                  hintStyle: GoogleFonts.poppins(),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  filled: true,
+                  fillColor: Colors.white,
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
@@ -59,15 +72,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   hintText: 'Şifre',
+                  hintStyle: GoogleFonts.poppins(),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  filled: true,
+                  fillColor: Colors.white,
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible 
-                        ? Icons.visibility 
-                        : Icons.visibility_off,
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -83,27 +99,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     // Şifremi unuttum işlemleri
                   },
-                  child: const Text(
+                  child: Text(
                     'Şifremi Unuttum',
-                    style: TextStyle(color: Colors.black54),
+                    style: GoogleFonts.poppins(
+                      color: Colors.black54,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Giriş Yap',
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -111,36 +131,43 @@ class _LoginScreenState extends State<LoginScreen> {
               OutlinedButton(
                 onPressed: _createAccount,
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.black),
+                  side: const BorderSide(color: Colors.black87),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Hesap Oluştur',
-                  style: TextStyle(
-                    color: Colors.black,
+                  style: GoogleFonts.poppins(
+                    color: Colors.black87,
                     fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               RichText(
-                text: const TextSpan(
-                  style: TextStyle(color: Colors.black54, fontSize: 12),
-                  children: [
-                    TextSpan(text: 'Hizmet şartlarımızı ve '),
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: GoogleFonts.poppins(
+                    color: Colors.black45,
+                    fontSize: 12,
+                  ),
+                  children: const [
+                    TextSpan(text: 'Hizmet şartlarınızı ve '),
                     TextSpan(
-                      text: 'gizlilik politikamızı',
+                      text: 'gizlilik politikanızı',
                       style: TextStyle(
                         decoration: TextDecoration.underline,
+                        color: Colors.black,
                       ),
                     ),
-                    TextSpan(text: ' kabul ediyorum'),
+                    TextSpan(text: ' kabul ediyorum.'),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -148,14 +175,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _login() {
-    // Giriş yapma işlemleri
-    logger.info('Giriş yapılıyor: ${_emailController.text}'); // Giriş işlem logu
-  }
+void _login() {
+  logger.info('Giriş yapılıyor: ${_emailController.text}');
+  Navigator.pushReplacementNamed(context, '/home'); // HomePage'e geçiş
+}
+
 
   void _createAccount() {
-    // Hesap oluşturma sayfasına yönlendirme
-    logger.info('Hesap oluşturma sayfasına gidiliyor'); // Hesap oluşturma logu
+    logger.info('Hesap oluşturma sayfasına gidiliyor');
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+    );
   }
 
   @override
