@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:beautyco/screens/create_post.dart';
 import 'search_screen.dart';
+import 'profile_screen.dart'; // ProfileScreen sınıfı için import eklendi
 
 void main() {
   runApp(const MyApp());
@@ -103,10 +104,17 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         });
       }
-    } else {
+    } else if (index == 0) {
+      // Ana sayfada kalın veya yeniden yükleyin
       setState(() {
         _selectedIndex = index;
       });
+    } else if (index == 3) {
+      // Profil sayfasına git
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
     }
   }
 
@@ -596,8 +604,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          
-          
           
           const SizedBox(height: 8),
         ],
