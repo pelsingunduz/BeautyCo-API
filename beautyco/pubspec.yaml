@@ -21,4 +21,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/lorea_paris_sac_kremi.jpg
+    - assets/images/ogx_sampuan.png
+    - assets/images/ogx_kati_sampuan.png
+    - assets/images/john_frieda_sampuan.png
+    - assets/images/nyx_allik.png
