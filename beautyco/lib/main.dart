@@ -3,6 +3,8 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_page.dart'; // HomePage'i import et
 import 'screens/profile_screen.dart'; // ProfileScreen'i import et
+import 'package:beautyco/theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,12 +16,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BeautyCo',
+      title: 'Beauty Co.',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.purple,
-        scaffoldBackgroundColor: const Color(0xFFF9F9F9),
-      ),
+      theme: beautyCoTheme,
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),

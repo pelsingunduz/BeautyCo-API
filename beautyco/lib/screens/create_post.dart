@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:beautyco/theme.dart';
 import 'search_screen.dart';
-
-// Renk paletini güncelleyelim
-const Color primaryRed = Color(0xFF9B1B30);     // Zengin kırmızı
-const Color lightRed = Color(0xFFFEEAED);       // Açık gül
-const Color champagneGold = Color(0xFFFDF6E3);  // Krem şampanya
-const Color darkRed = Color(0xFF6D1122);        // Koyu kırmızı
-const Color roseGold = Color(0xFFE8C5C9);       // Roze altın
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({Key? key}) : super(key: key);

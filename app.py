@@ -17,7 +17,7 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "default_secret_key")
 DB_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
-    conn = psycopg2.connect(DB_URL)
+    conn = psycopg2.connect(DB_URL, sslmode='require')
     return conn
 
 def init_db():
