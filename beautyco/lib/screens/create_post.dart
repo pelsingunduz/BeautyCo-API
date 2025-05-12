@@ -142,7 +142,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -170,7 +169,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   onChanged: _filterProducts,
                 ),
                 const SizedBox(height: 20),
-                
+
+                // Ürün listesi
                 if (_selectedProduct == null)
                   ListView.builder(
                     shrinkWrap: true,
@@ -185,100 +185,75 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Colors.white, lightRed.withOpacity(0.2)],
-                            ),
-                          ),
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedProduct = product['name'];
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[200],
-                                      borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedProduct = product['name'];
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.asset(
+                                      product['image'],
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(Icons.image_not_supported);
+                                      },
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.asset(
-                                        product['image'],
-                                        fit: BoxFit.contain,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          print('Resim yüklenirken hata: $error');
-                                          return Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.grey,
-                                              size: 40,
-                                            ),
-                                          );
-                                        },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(product['brand'], style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        product['name'],
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          product['brand'],
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          product['name'],
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       );
                     },
                   ),
-                
+
                 if (_selectedProduct != null) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    'Seçilen Ürün',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: primaryRed,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(color: primaryRed),
-                      boxShadow: [
-                        BoxShadow(
-                          color: darkRed.withOpacity(0.1),
-                          spreadRadius: 2,
-                          blurRadius: 15,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Row(
                       children: [
@@ -294,214 +269,86 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             child: Image.asset(
                               _products.firstWhere((p) => p['name'] == _selectedProduct)['image'],
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                print('Resim yükleme hatası: $error');
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.grey,
-                                    size: 24,
-                                  ),
-                                );
-                              },
                             ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _selectedProduct!,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            _selectedProduct!,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 30),
-                  
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 24),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: lightRed.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Puanınız',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: primaryRed,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(5, (index) {
-                            return IconButton(
-                              icon: Icon(
-                                index < _rating ? Icons.star : Icons.star_border,
-                                color: primaryRed,
-                                size: 42,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _rating = index + 1;
-                                });
-                              },
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: darkRed.withOpacity(0.05),
-                          spreadRadius: 1,
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _titleController,
-                          decoration: InputDecoration(
-                            labelText: 'İnceleme Başlığı',
-                            labelStyle: GoogleFonts.poppins(
-                              color: primaryRed,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: primaryRed, width: 2),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _reviewController,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            labelText: 'İncelemenizi yazın',
-                            alignLabelWithHint: true,
-                            labelStyle: GoogleFonts.poppins(
-                              color: primaryRed,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: primaryRed, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Fotoğraf ekleme fonksiyonu
-                      },
-                      icon: Icon(Icons.photo_camera, color: primaryRed, size: 26),
-                      label: Text(
-                        'Fotoğraf Ekle',
-                        style: GoogleFonts.poppins(
+                  // Puan verme
+                  Text('Puanınız', style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.w600, color: primaryRed)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < _rating ? Icons.star : Icons.star_border,
                           color: primaryRed,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                          size: 32,
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: primaryRed, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        backgroundColor: lightRed.withOpacity(0.1),
-                      ),
+                        onPressed: () {
+                          setState(() {
+                            _rating = index + 1;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 20),
+                  // Başlık ve inceleme
+                  TextField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: 'İnceleme Başlığı',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                   ),
-                  
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _reviewController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      labelText: 'İncelemenizi yazın',
+                      alignLabelWithHint: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // Fotoğraf ekleme logic
+                    },
+                    icon: Icon(Icons.photo_camera, color: primaryRed),
+                    label: Text('Fotoğraf Ekle', style: GoogleFonts.poppins(color: primaryRed)),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: primaryRed),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                  ),
                   const SizedBox(height: 30),
-                  
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      gradient: LinearGradient(
-                        colors: [primaryRed, darkRed],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: darkRed.withOpacity(0.3),
-                          spreadRadius: 0,
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context, {
+                        'product': _selectedProduct,
+                        'rating': _rating,
+                        'title': _titleController.text,
+                        'review': _reviewController.text,
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      minimumSize: const Size.fromHeight(50),
                     ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context, {
-                          'product': _selectedProduct,
-                          'rating': _rating,
-                          'title': _titleController.text,
-                          'review': _reviewController.text,
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: Text(
-                        'Yorumu Paylaş',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
+                    child: Text('İncelemeyi Paylaş', style: GoogleFonts.montserrat(fontSize: 18, color: Colors.white)),
                   ),
                 ],
               ],

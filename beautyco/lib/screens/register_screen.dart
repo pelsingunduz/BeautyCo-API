@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 final Logger logger = Logger('RegisterScreen');
@@ -89,9 +91,9 @@ class RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible 
-                        ? Icons.visibility 
-                        : Icons.visibility_off,
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -113,9 +115,9 @@ class RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isConfirmPasswordVisible 
-                        ? Icons.visibility 
-                        : Icons.visibility_off,
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -183,10 +185,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(color: Colors.black54),
                   ),
                   TextButton(
-                    onPressed: () {
-                      // Giriş ekranına dönüş
-                      Navigator.of(context).pop();
-                    },
+                    onPressed: () => Navigator.of(context).pop(),
                     child: const Text(
                       'Giriş Yap',
                       style: TextStyle(
@@ -205,35 +204,57 @@ class RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _register() {
-    // Form doğrulama
-    if (_nameController.text.isEmpty || 
-        _emailController.text.isEmpty || 
-        _passwordController.text.isEmpty || 
+  void _register() async {
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
       _showErrorSnackBar('Lütfen tüm alanları doldurun');
       return;
     }
 
-    // Şifre eşleşme kontrolü
     if (_passwordController.text != _confirmPasswordController.text) {
       _showErrorSnackBar('Şifreler eşleşmiyor');
       return;
     }
 
-    // Koşulları kabul etme kontrolü
     if (!_agreeToTerms) {
       _showErrorSnackBar('Devam etmek için hizmet şartlarını kabul edin');
       return;
     }
 
-    // Kayıt işlemleri
-    logger.info('Kayıt yapılıyor: ${_emailController.text}');
-    
-    // Kayıt başarılı olduktan sonra giriş ekranına yönlendirme
-    // Navigator.of(context).pushReplacement(
-    //   MaterialPageRoute(builder: (context) => const LoginScreen()),
-    // );
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    final url = Uri.parse('http://127.0.0.1:5000/register'); // IP'ni buraya yaz
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        logger.info('Kayıt başarılı!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kayıt başarılı! Giriş yapabilirsiniz.')),
+        );
+        Navigator.of(context).pop(); // Giriş ekranına dönüş
+      } else {
+        final error = jsonDecode(response.body);
+        logger.warning('Kayıt başarısız: ${error['message']}');
+        _showErrorSnackBar(error['message'] ?? 'Kayıt başarısız oldu');
+      }
+    } catch (e) {
+      logger.severe('Kayıt hatası: $e');
+      _showErrorSnackBar('Bir hata oluştu. Lütfen tekrar deneyin.');
+    }
   }
 
   void _showErrorSnackBar(String message) {
