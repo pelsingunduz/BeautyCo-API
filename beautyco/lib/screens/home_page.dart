@@ -42,10 +42,35 @@ class _HomeScreenState extends State<HomeScreen> {
     'Kişisel Bakım',
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  void _onItemTapped(int index) async {
+    if (index == 1) {
+      // CreatePostScreen'den veri bekle
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+      );
+
+      // Check if result has the category field and handle if it's a map
+      if (result != null && result is Map) {
+        setState(() {
+          _posts.insert(0, {
+            'username': 'sen', // Kullanıcı adını dinamik yapabilirsin
+            'product': result['product'] ?? '',
+            'content': result['review'] ?? '',
+            'category': result['category'] ?? 'Makyaj', // Use the selected category
+            'showCommentField': false,
+          });
+          _selectedIndex = 0; // Ana sayfaya geri dön
+          
+          // Optional: Auto-select the category tab after posting
+          _selectedCategory = result['category'] ?? 'Makyaj';
+        });
+      }
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   Widget _buildCategoryButton(String title) {
@@ -85,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Kullanıcı adı ve ürün ismi
             Row(
               children: [
                 const CircleAvatar(child: Icon(Icons.person)),
@@ -99,20 +123,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            // Ürün görseli alanı (placeholder)
             Container(
               height: 200,
               color: Colors.grey[200],
               child: const Center(child: Icon(Icons.photo, size: 50, color: Colors.grey)),
             ),
             const SizedBox(height: 10),
-            // Post içeriği
             Text(
               post['content'],
               style: GoogleFonts.montserrat(fontSize: 14),
             ),
             const SizedBox(height: 10),
-            // Yorum alanı aç/kapa
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -157,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Kategori butonları
           SizedBox(
             height: 50,
             child: ListView.builder(
@@ -169,7 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const Divider(),
-          // Post listesi
           Expanded(
             child: ListView.builder(
               itemCount: filteredPosts.length,
@@ -179,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      const CreatePostScreen(),
+      Container(), // Paylaş sekmesi artık burada değil
       const SearchScreen(),
       const ProfileScreen(),
     ];

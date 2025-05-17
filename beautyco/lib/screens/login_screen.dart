@@ -4,11 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'register_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart'; // ApiService import edildi
 
 final Logger logger = Logger('LoginScreen');
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final ApiService apiService; // Eklendi
+
+  const LoginScreen({Key? key, required this.apiService}) : super(key: key); // Parametre alması sağlandı
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -45,7 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _createAccount() {
     logger.info('Hesap oluşturma sayfasına gidiliyor');
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+      MaterialPageRoute(
+        builder: (context) => RegisterScreen(apiService: widget.apiService), // Parametre geçildi
+      ),
     );
   }
 
@@ -66,11 +72,11 @@ class _LoginScreenState extends State<LoginScreen> {
         final responseData = jsonDecode(response.body);
         final token = responseData['token'];
 
-        logger.info('Giriş başarılı. Token: $token');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await widget.apiService.init(); // ApiService'e token yeniden yükletiliyor
 
-        // Token saklama örneği (opsiyonel):
-        // SharedPreferences prefs = await SharedPreferences.getInstance();
-        // await prefs.setString('token', token);
+        logger.info('Giriş başarılı. Token kaydedildi: $token');
 
         Navigator.pushReplacementNamed(context, '/home');
       } else {
@@ -83,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

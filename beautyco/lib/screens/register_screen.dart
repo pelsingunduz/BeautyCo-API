@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:beautyco/services/api_service.dart'; // ApiService'i içe aktar
 
 final Logger logger = Logger('RegisterScreen');
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final ApiService apiService;
+
+  const RegisterScreen({Key? key, required this.apiService}) : super(key: key);
 
   @override
   State<RegisterScreen> createState() => RegisterScreenState();
@@ -227,29 +229,18 @@ class RegisterScreenState extends State<RegisterScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    final url = Uri.parse('http://127.0.0.1:5000/register'); // IP'ni buraya yaz
-
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-        }),
-      );
+      final success = await widget.apiService.register(name, email, password);
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
+      if (success) {
         logger.info('Kayıt başarılı!');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Kayıt başarılı! Giriş yapabilirsiniz.')),
         );
-        Navigator.of(context).pop(); // Giriş ekranına dönüş
+        Navigator.of(context).pop();
       } else {
-        final error = jsonDecode(response.body);
-        logger.warning('Kayıt başarısız: ${error['message']}');
-        _showErrorSnackBar(error['message'] ?? 'Kayıt başarısız oldu');
+        logger.warning('Kayıt başarısız: ${widget.apiService.lastError}');
+        _showErrorSnackBar(widget.apiService.lastError ?? 'Kayıt başarısız oldu');
       }
     } catch (e) {
       logger.severe('Kayıt hatası: $e');
