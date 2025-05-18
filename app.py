@@ -176,6 +176,7 @@ def get_users(current_user):
     
     return jsonify(users)
 
+# DÜZELTME: Bu endpoint POST metodu olmalı çünkü ürün ekleme işlemi yapıyor
 @app.route('/product', methods=['POST'])
 @token_required
 def add_product(current_user):
@@ -187,17 +188,26 @@ def add_product(current_user):
     average_rating = data.get('average_rating')
     product_photo = data.get('product_photo')
 
+    # Gerekli alanların kontrolü
+    if not name:
+        return jsonify({"error": "Ürün adı gereklidir."}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO products (name, brand, category_id, description, average_rating, product_photo) VALUES (%s, %s, %s, %s, %s, %s) RETURNING product_id",
-        (name, brand, category_id, description, average_rating, product_photo)
-    )
-    product_id = cursor.fetchone()[0]
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({"message": "Ürün başarıyla eklendi.", "product_id": product_id}), 201
+    try:
+        cursor.execute(
+            "INSERT INTO products (name, brand, category_id, description, average_rating, product_photo) VALUES (%s, %s, %s, %s, %s, %s) RETURNING product_id",
+            (name, brand, category_id, description, average_rating, product_photo)
+        )
+        product_id = cursor.fetchone()[0]
+        conn.commit()
+        return jsonify({"message": "Ürün başarıyla eklendi.", "product_id": product_id}), 201
+    except psycopg2.Error as e:
+        conn.rollback()
+        return jsonify({"error": f"Ürün eklenirken bir hata oluştu: {str(e)}"}), 400
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/products', methods=['GET'])
 @token_required
@@ -229,6 +239,9 @@ def get_products(current_user):
 def add_favorite(current_user):
     data = request.get_json()
     product_id = data.get('product_id')
+
+    if not product_id:
+        return jsonify({"error": "Ürün ID gereklidir."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()

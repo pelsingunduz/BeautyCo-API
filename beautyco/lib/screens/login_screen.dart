@@ -56,40 +56,25 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
 
-    final url = Uri.parse('http://127.0.0.1:5000/login'); // IP'yi uygun şekilde güncelle
+  try {
+    final loginSuccess = await widget.apiService.login(email, password);
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        final token = responseData['token'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await widget.apiService.init(); // ApiService'e token yeniden yükletiliyor
-
-        logger.info('Giriş başarılı. Token kaydedildi: $token');
-
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        final error = jsonDecode(response.body);
-        logger.warning('Giriş başarısız: ${error['message']}');
-        _showErrorDialog(error['message']);
-      }
-    } catch (e) {
-      logger.severe('Giriş hatası: $e');
-      _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
+    if (loginSuccess) {
+      logger.info('Giriş başarılı. Token kaydedildi.');
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      final error = widget.apiService.lastError ?? 'Giriş başarısız.';
+      logger.warning(error);
+      _showErrorDialog(error);
     }
+  } catch (e) {
+    logger.severe('Giriş hatası: $e');
+    _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
   }
-
+}
 
   @override
   Widget build(BuildContext context) {

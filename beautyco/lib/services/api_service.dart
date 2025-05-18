@@ -26,59 +26,62 @@ class ApiService {
   
   // Kullanıcı kaydı için eklenen method
   Future<bool> register(String name, String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-        }),
-      );
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Registration successful');
-        return true;
-      } else {
-        lastError = 'Kayıt başarısız: ${response.body}';
-        print(lastError);
-        return false;
-      }
-    } catch (e) {
-      lastError = 'Kayıt hatası: $e';
-      print(lastError);
+  final url = Uri.parse('http://127.0.0.1:5000/register'); // Gerekirse IP'yi değiştir
+  try {
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return true;
+    } else {
+      final data = jsonDecode(response.body);
+      lastError = data['message'] ?? 'Bilinmeyen hata';
       return false;
     }
+  } catch (e) {
+    lastError = 'Sunucuya bağlanılamadı';
+    return false;
   }
+}
+
   
-  Future<bool> login(String username, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode({'username': username, 'password': password}),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _authToken = data['token'] ?? data['access_token'];
-        if (_authToken != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', _authToken!);
-          print('Token saved successfully');
-          return true;
-        }
-      }
-      lastError = 'Giriş başarısız: ${response.body}';
-      return false;
-    } catch (e) {
-      lastError = 'Giriş hatası: $e';
-      print('Login error: $e');
+  Future<bool> login(String email, String password) async {
+  final url = Uri.parse('$baseUrl/login');
+
+  try {
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      _authToken = data['token'];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _authToken!);
+
+      lastError = null;
+      return true;
+    } else {
+      final data = jsonDecode(response.body);
+      lastError = data['message'] ?? 'Giriş başarısız';
       return false;
     }
+  } catch (e) {
+    lastError = e.toString();
+    return false;
   }
-  
+}
+
   Future<void> logout() async {
     _authToken = null;
     final prefs = await SharedPreferences.getInstance();
