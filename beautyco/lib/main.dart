@@ -6,13 +6,12 @@ import 'screens/profile_screen.dart';
 import 'package:beautyco/theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:beautyco/services/api_service.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final apiService = ApiService();
-  await apiService.init(); // SharedPreferences'dan token yükleniyor
+  await ApiService.init();
 
+  final apiService = ApiService();
   runApp(MyApp(apiService: apiService));
 }
 
@@ -29,11 +28,11 @@ class MyApp extends StatelessWidget {
       theme: beautyCoTheme,
       initialRoute: '/',
       routes: {
-        '/': (context) => LoginScreen(apiService: apiService),
-        '/register': (context) => RegisterScreen(apiService: apiService),
-        '/home': (context) => HomeScreen(),
-        '/profile': (context) => ProfileScreen(),
-      },
+          '/': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/home': (context) => HomeScreen(),
+          '/profile': (context) => ProfileScreen(),
+},
     );
   }
 }

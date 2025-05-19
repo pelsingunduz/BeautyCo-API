@@ -10,9 +10,7 @@ import '../services/api_service.dart'; // ApiService import edildi
 final Logger logger = Logger('LoginScreen');
 
 class LoginScreen extends StatefulWidget {
-  final ApiService apiService; // Eklendi
-
-  const LoginScreen({Key? key, required this.apiService}) : super(key: key); // Parametre alması sağlandı
+  const LoginScreen({Key? key}) : super(key: key); // ApiService parametresi kaldırıldı
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -50,31 +48,31 @@ class _LoginScreenState extends State<LoginScreen> {
     logger.info('Hesap oluşturma sayfasına gidiliyor');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => RegisterScreen(apiService: widget.apiService), // Parametre geçildi
+        builder: (context) => const RegisterScreen(), // ApiService parametresi kaldırıldı
       ),
     );
   }
 
   Future<void> _login() async {
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  try {
-    final loginSuccess = await widget.apiService.login(email, password);
+    try {
+      final loginSuccess = await ApiService().login(email, password);
 
-    if (loginSuccess) {
-      logger.info('Giriş başarılı. Token kaydedildi.');
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      final error = widget.apiService.lastError ?? 'Giriş başarısız.';
-      logger.warning(error);
-      _showErrorDialog(error);
+      if (loginSuccess) {
+        logger.info('Giriş başarılı. Token kaydedildi.');
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        final errorMessage = ApiService.lastError ?? 'Giriş başarısız.';
+        logger.warning(errorMessage);
+        _showErrorDialog(errorMessage);
+      }
+    } catch (e) {
+      logger.severe('Giriş hatası: $e');
+      _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
     }
-  } catch (e) {
-    logger.severe('Giriş hatası: $e');
-    _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
   }
-}
 
   @override
   Widget build(BuildContext context) {

@@ -40,13 +40,36 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _initializeApiAndLoadData() async {
     try {
       // API servisini başlat (token varsa yükle)
-      await _apiService.init();
+      ApiService.init();  
+      
+      // Login durumunu kontrol et - token kontrolü için alternatif yöntemler:
+      // ApiService'deki isLoggedIn getter'ını kullan
+      bool isLoggedIn = ApiService.isLoggedIn; 
+      
+      if (!isLoggedIn) {
+        if (mounted) {
+          setState(() {
+            _isAuthError = true;
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Lütfen giriş yapın'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
       
       // Verileri yükle
-      _loadData();
+      await _loadData();
     } catch (e) {
       print('API initialization error: $e');
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('API başlatma hatası: $e'),
@@ -66,42 +89,86 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     });
 
     try {
+      print('Loading categories and products...');
+      
       // Kategori ve ürün verilerini veritabanından çek
       final categoriesResponse = await _apiService.getCategories();
       final productsResponse = await _apiService.getProducts();
       
       // Debug çıktıları
-      print('Categories: ${categoriesResponse.length}');
-      print('Products: ${productsResponse.length}');
+      print('Categories received: ${categoriesResponse.length}');
+      print('Categories data: $categoriesResponse');
+      print('Products received: ${productsResponse.length}');
+      print('Products data: $productsResponse');
 
       // mounted kontrolü ekleyelim
       if (!mounted) return;
 
       setState(() {
         _categoryList = List<Map<String, dynamic>>.from(categoriesResponse);
-        _products = List<Product>.from(
-          productsResponse.map((product) => Product.fromJson(product)),
-        );
+        
+        // Ürünleri Product modeline dönüştür - null kontrollü
+        _products = productsResponse.map<Product?>((productData) {
+          try {
+            return Product.fromJson(productData);
+          } catch (e) {
+            print('Error parsing product: $productData');
+            print('Error: $e');
+            // Hatalı ürünü atla ve null döndür
+            return null;
+          }
+        }).where((product) => product != null).cast<Product>().toList();
 
         // Veritabanı entegrasyonu sonrası kategori listesini güncelle
         if (_categoryList.isNotEmpty) {
-          _categories = _categoryList.map((category) => category['name'] as String).toList();
+          _categories = _categoryList.map<String>((category) {
+            return category['name']?.toString() ?? 'Bilinmeyen';
+          }).toList();
+          
+          // İlk kategoriyi default olarak seç
+          if (_categories.isNotEmpty) {
+            _selectedCategory = _categories.first;
+          }
         }
 
-        _filteredProducts = _products;
+        _filteredProducts = List.from(_products);
         _isLoading = false;
+        
+        print('Final products count: ${_products.length}');
+        print('Final categories count: ${_categories.length}');
       });
     } catch (e) {
+      print('Load data error: $e');
+      print('API Service last error: ${ApiService.lastError}');
+      
       // mounted kontrolü ekleyelim
       if (!mounted) return;
       
       setState(() {
         _isLoading = false;
+        if (e.toString().contains('Authentication required') || 
+            e.toString().contains('401')) {
+          _isAuthError = true;
+        }
       });
+      
+      String errorMessage = 'Veri yüklenirken hata oluştu';
+      if (ApiService.lastError != null) {
+        errorMessage = ApiService.lastError!;
+      } else {
+      errorMessage = '$errorMessage: $e';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Veri yüklenirken hata oluştu: $e'),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Tekrar Dene',
+            textColor: Colors.white,
+            onPressed: () {
+              _initializeApiAndLoadData();
+            },
+          ),
         ),
       );
     }
@@ -110,7 +177,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void _filterProducts(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredProducts = _products;
+        _filteredProducts = List.from(_products);
       } else {
         _filteredProducts = _products.where((product) {
           final searchString = '${product.name.toLowerCase()} ${product.brand?.toLowerCase() ?? ""} ${product.description?.toLowerCase() ?? ""}';
@@ -118,6 +185,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         }).toList();
       }
     });
+    print('Filtered products count: ${_filteredProducts.length}');
   }
 
   Future<void> _submitReview() async {
@@ -243,6 +311,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               );
             },
           ),
+          // Debug butonu (geliştirme aşamasında)
+          if (true) // Debug modunda göster
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black),
+              onPressed: () {
+                _initializeApiAndLoadData();
+              },
+            ),
         ],
       ),
       body: Container(
@@ -254,32 +330,89 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             stops: const [0.0, 0.7],
           ),
         ),
-        child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: primaryRed,
-                ),
-              )
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _productPromptCard(),
-                      const SizedBox(height: 20),
-                      _searchField(),
-                      const SizedBox(height: 20),
-                      _selectedProduct == null
-                          ? _productList()
-                          : _selectedProductDetail(),
-                    ],
-                  ),
-                ),
-              ),
+        child: _buildBody(),
       ),
     );
   }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: primaryRed),
+            const SizedBox(height: 16),
+            Text(
+              'Veriler yükleniyor...',
+              style: GoogleFonts.montserrat(
+                color: primaryRed,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isAuthError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Giriş Yapmanız Gerekiyor',
+              style: GoogleFonts.montserrat(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'İnceleme oluşturmak için lütfen giriş yapın',
+              style: GoogleFonts.montserrat(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryRed,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Giriş Yap'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _productPromptCard(),
+            const SizedBox(height: 20),
+            _searchField(),
+            const SizedBox(height: 20),
+            _selectedProduct == null
+                ? _productList()
+                : _selectedProductDetail(),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _productPromptCard() {
     return Container(
@@ -762,7 +895,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ),
     );
   }
-
   Widget _submitButton() {
     return Container(
       width: double.infinity,

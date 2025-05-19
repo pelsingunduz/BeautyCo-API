@@ -1,14 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:beautyco/services/api_service.dart'; // ApiService'i içe aktar
+import '../services/api_service.dart'; // ApiService import edildi
 
 final Logger logger = Logger('RegisterScreen');
 
 class RegisterScreen extends StatefulWidget {
-  final ApiService apiService;
-
-  const RegisterScreen({Key? key, required this.apiService}) : super(key: key);
+  const RegisterScreen({super.key}); // Parametre kaldırıldı
 
   @override
   State<RegisterScreen> createState() => RegisterScreenState();
@@ -26,7 +24,7 @@ class RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // Aynı tasarım burada kalacak...
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -39,6 +37,7 @@ class RegisterScreenState extends State<RegisterScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
+            // İçerik aynı kalacak
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 20),
@@ -136,26 +135,15 @@ class RegisterScreenState extends State<RegisterScreen> {
                     value: _agreeToTerms,
                     onChanged: (value) {
                       setState(() {
-                        _agreeToTerms = value!;
+                        _agreeToTerms = value ?? false;
                       });
                     },
                     activeColor: Colors.black,
                   ),
-                  Expanded(
-                    child: RichText(
-                      text: const TextSpan(
-                        style: TextStyle(color: Colors.black54, fontSize: 12),
-                        children: [
-                          TextSpan(text: 'Hizmet şartlarını ve '),
-                          TextSpan(
-                            text: 'gizlilik politikasını',
-                            style: TextStyle(
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          TextSpan(text: ' kabul ediyorum'),
-                        ],
-                      ),
+                  const Expanded(
+                    child: Text(
+                      'Hizmet şartlarını ve gizlilik politikasını kabul ediyorum',
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ],
@@ -230,7 +218,9 @@ class RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
 
     try {
-      final success = await widget.apiService.register(name, email, password);
+      // ApiService örneği burada yaratılıyor:
+      final apiService = ApiService();
+      final success = await apiService.register(name, email, password);
 
       if (success) {
         logger.info('Kayıt başarılı!');
@@ -239,8 +229,9 @@ class RegisterScreenState extends State<RegisterScreen> {
         );
         Navigator.of(context).pop();
       } else {
-        logger.warning('Kayıt başarısız: ${widget.apiService.lastError}');
-        _showErrorSnackBar(widget.apiService.lastError ?? 'Kayıt başarısız oldu');
+        final errorMessage = ApiService.lastError ?? 'Kayıt başarısız oldu';
+        logger.warning('Kayıt başarısız: $errorMessage');
+        _showErrorSnackBar(errorMessage);
       }
     } catch (e) {
       logger.severe('Kayıt hatası: $e');

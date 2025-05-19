@@ -82,9 +82,35 @@ def init_db():
     ''')
     
     conn.commit()
+    
+    # Örnek kategoriler ekle (eğer yoksa)
+    cursor.execute("SELECT COUNT(*) FROM categories")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+            INSERT INTO categories (category_name) VALUES 
+            ('Makyaj'), ('Cilt Bakımı'), ('Saç'), ('Parfüm')
+        """)
+        conn.commit()
+        print("Örnek kategoriler eklendi.")
+    
+    # Örnek ürünler ekle (eğer yoksa)
+    cursor.execute("SELECT COUNT(*) FROM products")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+            INSERT INTO products (name, brand, category_id, description, average_rating, product_photo) VALUES 
+            ('Hydra Beauty Serum', 'Chanel', 2, 'Yoğun nemlendirici serum', 4.5, 'https://example.com/chanel-serum.jpg'),
+            ('Rouge Allure Lipstick', 'Chanel', 1, 'Mat ruj', 4.2, 'https://example.com/chanel-lipstick.jpg'),
+            ('The Ordinary Retinol 0.2%', 'The Ordinary', 2, 'Anti-aging serum', 4.3, 'https://example.com/ordinary-retinol.jpg'),
+            ('Gloss Bomb Universal', 'Fenty Beauty', 1, 'Parlak ruj', 4.1, 'https://example.com/fenty-gloss.jpg'),
+            ('Kérastase Nutritive Shampoo', 'Kérastase', 3, 'Besleyici şampuan', 4.4, 'https://example.com/kerastase-shampoo.jpg'),
+            ('Shalimar Parfum', 'Guerlain', 4, 'Klasik kadın parfümü', 4.6, 'https://example.com/shalimar.jpg')
+        """)
+        conn.commit()
+        print("Örnek ürünler eklendi.")
+    
     cursor.close()
     conn.close()
-    print("Veritabanı tabloları başarıyla oluşturuldu.")
+    print("Veritabanı tabloları başarıyla oluşturuldu ve örnek veriler eklendi.")
 
 def token_required(f):
     @wraps(f)
@@ -110,7 +136,11 @@ def register_user():
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
-    profile_photo = data.get('profile_photo')  # Yeni ekledik
+    profile_photo = data.get('profile_photo')
+    
+    # Basit validasyon
+    if not all([name, email, password]):
+        return jsonify({"error": "İsim, email ve şifre gereklidir."}), 400
 
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -127,6 +157,9 @@ def register_user():
     except psycopg2.IntegrityError:
         conn.rollback()
         return jsonify({"error": "Bu email ile kayıtlı bir kullanıcı zaten var."}), 400
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Kayıt işlemi sırasında hata: {str(e)}"}), 500
     finally:
         cursor.close()
         conn.close()
@@ -136,6 +169,9 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+    
+    if not all([email, password]):
+        return jsonify({'message': 'Email ve şifre gereklidir!'}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -149,7 +185,7 @@ def login():
             'user_id': user[0],
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         }, app.config['SECRET_KEY'], algorithm='HS256')
-        return jsonify({'token': token})
+        return jsonify({'token': token, 'message': 'Giriş başarılı!'}), 200
     else:
         return jsonify({'message': 'Geçersiz email veya şifre!'}), 401
 
@@ -167,21 +203,20 @@ def get_users(current_user):
     users = []
     for user in users_data:
         users.append({
-            'user_id': user[0],
+            'id': user[0],  # Flutter tarafında kullanılan key ismi
             'name': user[1],
             'email': user[2],
             'profile_photo': user[3],
-            'created_at': user[4]
+            'created_at': user[4].isoformat() if user[4] else None
         })
     
     return jsonify(users)
 
-# DÜZELTME: Bu endpoint POST metodu olmalı çünkü ürün ekleme işlemi yapıyor
 @app.route('/product', methods=['POST'])
 @token_required
 def add_product(current_user):
     data = request.get_json()
-    name = data.get('name')  # product_name yerine name kullandık
+    name = data.get('name')
     brand = data.get('brand')
     category_id = data.get('category_id')
     description = data.get('description')
@@ -219,17 +254,17 @@ def get_products(current_user):
     cursor.close()
     conn.close()
     
-    # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
+    # Flutter tarafının beklediği formatta veri dönüştürme
     products = []
     for product in products_data:
         products.append({
-            'product_id': product[0],
+            'id': product[0],  # Flutter'da product_id olarak kullanılıyor
             'name': product[1],
             'brand': product[2],
-            'category_id': product[3],
+            'categoryId': product[3],  # Flutter'da categoryId olarak kullanılıyor
             'description': product[4],
-            'average_rating': float(product[5]) if product[5] else None,
-            'product_photo': product[6]
+            'averageRating': float(product[5]) if product[5] else None,
+            'productPhoto': product[6]
         })
     
     return jsonify(products)
@@ -286,7 +321,7 @@ def get_user_favorites(current_user):
             'description': fav[4],
             'average_rating': float(fav[5]) if fav[5] else None,
             'product_photo': fav[6],
-            'favorited_at': fav[7]
+            'favorited_at': fav[7].isoformat() if fav[7] else None
         })
     
     return jsonify(favorites)
@@ -327,12 +362,12 @@ def get_categories(current_user):
     cursor.close()
     conn.close()
     
-    # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
+    # Flutter tarafının beklediği formatta veri dönüştürme
     categories = []
     for category in categories_data:
         categories.append({
-            'category_id': category[0],
-            'category_name': category[1]
+            'id': category[0],  # Flutter'da id olarak kullanılıyor
+            'name': category[1]  # Flutter'da name olarak kullanılıyor
         })
     
     return jsonify(categories)
@@ -365,7 +400,7 @@ def add_review(current_user):
         )
         
         conn.commit()
-        return jsonify({"message": "İnceleme başarıyla eklendi.", "review_id": review_id}), 201
+        return jsonify({"success": True, "message": "İnceleme başarıyla eklendi.", "review_id": review_id}), 201
     except psycopg2.Error as e:
         conn.rollback()
         return jsonify({"error": f"İnceleme eklenirken bir hata oluştu: {str(e)}"}), 400
@@ -397,7 +432,7 @@ def get_product_reviews(current_user, product_id):
             'review_id': review[0],
             'review_text': review[1],
             'rating': review[2],
-            'review_date': review[3],
+            'review_date': review[3].isoformat() if review[3] else None,
             'likes_count': review[4],
             'replies': review[5],
             'user': {
@@ -408,6 +443,19 @@ def get_product_reviews(current_user, product_id):
         })
     
     return jsonify(reviews)
+
+# Bağlantı testi endpoint'i
+@app.route('/test', methods=['GET'])
+def test_connection():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "Veritabanı bağlantısı başarılı!"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Veritabanı bağlantı hatası: {str(e)}"}), 500
 
 if __name__ == '__main__':
     init_db()  # Uygulamayı başlatmadan önce veritabanını hazırla
