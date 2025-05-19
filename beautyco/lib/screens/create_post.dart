@@ -219,25 +219,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       return;
     }
 
-    // Gönderim sürecinde loading göster
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      // Başlık ve inceleme metnini birleştir
       final reviewText = _titleController.text.isNotEmpty 
         ? "${_titleController.text}\n\n${_reviewController.text}" 
         : _reviewController.text;
 
-      // API'ye inceleme gönder
       final response = await _apiService.addReview(
         _selectedProduct!.id,
         reviewText,
         _rating.toInt(),
       );
 
-      // mounted kontrolü ekleyelim
       if (!mounted) return;
       
       setState(() {
@@ -251,7 +247,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        
+        // Ana sayfaya dönerken gerekli verileri gönder
+        Navigator.pop(context, {
+          'product': _selectedProduct!.name,
+          'review': reviewText,
+          'category': _selectedCategory,
+          'rating': _rating,
+          'brand': _selectedProduct!.brand,
+          'productPhoto': _selectedProduct!.productPhoto,
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -261,7 +266,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         );
       }
     } catch (e) {
-      // mounted kontrolü ekleyelim
       if (!mounted) return;
       
       setState(() {
