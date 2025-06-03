@@ -1,72 +1,74 @@
-// models/product.dart - Düzeltilmiş Product modeli
-
 class Product {
   final int id;
   final String name;
   final String? brand;
-  final String? description;
-  final String? productPhoto;
   final int? categoryId;
+  final String? description;
+  final double? averageRating; // Bu property eklendi
+  final String? productPhoto;
+  final String? categoryName;
 
   Product({
     required this.id,
     required this.name,
     this.brand,
-    this.description,
-    this.productPhoto,
     this.categoryId,
+    this.description,
+    this.averageRating, // Constructor'a eklendi
+    this.productPhoto,
+    this.categoryName,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
-    // Hata ayıklama
-    print('Parsing product from JSON: $json');
-    
-    // id değeri için özel kontrol
-    var productId = json['id'];
-    if (productId is String) {
-      // Bazı API'ler id'yi string olarak döndürebilir
-      try {
-        productId = int.parse(productId);
-      } catch (e) {
-        print('Error parsing id as int: $e');
-        // Varsayılan bir id kullan
-        productId = 0;
-      }
-    } else if (productId == null) {
-      print('Warning: Product ID is null');
-      productId = 0;
-    }
-    
-    // Özellikle name alanının varlığını kontrol et
-    final name = json['name'];
-    if (name == null || (name is String && name.isEmpty)) {
-      print('Warning: Product name is null or empty, using default name');
-    }
-        
-    // categoryId değeri için özel kontrol
-    var categoryId = json['categoryId'];
-    if (categoryId is String) {
-      try {
-        categoryId = int.parse(categoryId);
-      } catch (e) {
-        print('Error parsing categoryId as int, setting to null: $e');
-        categoryId = null;
-      }
-    }
-    
     return Product(
-      id: productId,
-      name: name?.toString() ?? 'İsimsiz Ürün',
-      brand: json['brand']?.toString(),
-      description: json['description']?.toString(),
-      productPhoto: json['productPhoto']?.toString(),
-      categoryId: categoryId,
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      brand: json['brand'],
+      categoryId: json['categoryId'],
+      description: json['description'],
+      averageRating: json['averageRating']?.toDouble(), // JSON'dan parse edildi
+      productPhoto: json['productPhoto'],
+      categoryName: json['categoryName'],
     );
   }
-  
-  // debugging için
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'brand': brand,
+      'categoryId': categoryId,
+      'description': description,
+      'averageRating': averageRating, // toJson'a eklendi
+      'productPhoto': productPhoto,
+      'categoryName': categoryName,
+    };
+  }
+
   @override
   String toString() {
-    return 'Product{id: $id, name: $name, brand: $brand, categoryId: $categoryId}';
+    return 'Product{id: $id, name: $name, brand: $brand, categoryId: $categoryId, description: $description, averageRating: $averageRating, productPhoto: $productPhoto, categoryName: $categoryName}';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Product &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  // Convenience getter'lar
+  String get displayName => name;
+  String get displayBrand => brand ?? 'Bilinmeyen Marka';
+  String get displayDescription => description ?? 'Açıklama bulunmuyor';
+  double get displayRating => averageRating ?? 0.0;
+  bool get hasRating => averageRating != null && averageRating! > 0;
+  
+  // Rating için yıldız sayısını hesaplayan method
+  int get fullStars => averageRating?.floor() ?? 0;
+  bool get hasHalfStar => averageRating != null && (averageRating! - fullStars) >= 0.5;
+  int get emptyStars => 5 - fullStars - (hasHalfStar ? 1 : 0);
 }
