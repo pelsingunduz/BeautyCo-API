@@ -4,6 +4,7 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 import 'product_detail_screen.dart'; 
 import 'create_post.dart';
+import 'home_page.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -193,11 +194,16 @@ class SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _navigateBack() {
-    Navigator.pop(context);
+  
+  // ✅ DÜZELTME: Home sayfasına git
+  void _navigateToHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+      (route) => false, // Tüm önceki sayfaları kaldır
+    );
   }
 
-  // ✅ DÜZELTME 6: Sample searches method ekle
   void _showSampleSearches() {
     showModalBottomSheet(
       context: context,
@@ -242,7 +248,7 @@ class SearchScreenState extends State<SearchScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _navigateBack,
+          onPressed: _navigateToHome, // ✅ DÜZELTME: _navigateBack yerine _navigateToHome
         ),
         actions: [
           if (allProducts.isNotEmpty)
@@ -320,7 +326,6 @@ class SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             
-            // ✅ DÜZELTME 7: Authentication check eklendi
             if (!ApiService.isLoggedIn)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -520,7 +525,6 @@ class SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // ✅ DÜZELTME 8: Missing _buildProductImage method
   Widget _buildProductImage(String? productPhoto) {
     if (productPhoto == null || productPhoto.isEmpty) {
       return Container(
