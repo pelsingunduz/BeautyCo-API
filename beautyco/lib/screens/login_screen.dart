@@ -5,12 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/api_service.dart'; // ApiService import edildi
+import '../services/api_service.dart'; 
 
 final Logger logger = Logger('LoginScreen');
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key); // ApiService parametresi kaldırıldı
+  const LoginScreen({super.key}); // super parameter kullanımı
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
     logger.info('Hesap oluşturma sayfasına gidiliyor');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const RegisterScreen(), // ApiService parametresi kaldırıldı
+        builder: (context) => const RegisterScreen(),
       ),
     );
   }
@@ -57,20 +57,74 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
+    // Basit validasyon
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorDialog('E-mail ve şifre alanları boş olamaz.');
+      return;
+    }
+
+    // Loading göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
     try {
-      final loginSuccess = await ApiService().login(email, password);
+      // ApiService instance oluştur
+      final apiService = ApiService();
+      logger.info('Login attempt for email: $email');
+      
+      final loginSuccess = await apiService.login(email, password);
 
       if (loginSuccess) {
         logger.info('Giriş başarılı. Token kaydedildi.');
-        Navigator.pushReplacementNamed(context, '/home');
+        
+        // Login başarılı olduktan sonra user bilgilerini al
+        try {
+          // Token'dan user ID'yi almak için getCurrentUser veya benzer metod çağır
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('auth_token') ?? prefs.getString('token');
+          
+          if (token != null) {
+            // Şimdilik test için user ID'yi 1 olarak ayarla
+            // Gerçek uygulamada bu bilgiyi API'den almalısınız
+            await prefs.setString('current_user_id', '1');
+            logger.info('Current user ID kaydedildi: 1');
+          }
+        } catch (e) {
+          logger.warning('User ID kaydedilemedi: $e');
+          // Yine de devam et, sadece profil kısmında sorun olabilir
+        }
+        
+        // Loading dialog'u kapat
+        if (mounted) Navigator.of(context).pop();
+        
+        // Ana sayfaya yönlendir
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       } else {
+        // Loading dialog'u kapat
+        if (mounted) Navigator.of(context).pop();
+        
+        // ApiService.lastError kullanarak hata mesajını al
         final errorMessage = ApiService.lastError ?? 'Giriş başarısız.';
-        logger.warning(errorMessage);
-        _showErrorDialog(errorMessage);
+        logger.warning('Login failed: $errorMessage');
+        if (mounted) {
+          _showErrorDialog(errorMessage);
+        }
       }
     } catch (e) {
+      // Loading dialog'u kapat
+      if (mounted) Navigator.of(context).pop();
+      
       logger.severe('Giriş hatası: $e');
-      _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
+      if (mounted) {
+        _showErrorDialog('Bir hata oluştu. Lütfen tekrar deneyin.');
+      }
     }
   }
 
@@ -181,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLoginButton() {
     return ElevatedButton(
-      onPressed: _login,
+      onPressed: _login, // _login metodunu doğru şekilde referans et
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.black,
         minimumSize: const Size(double.infinity, 50),

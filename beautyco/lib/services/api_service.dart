@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user.dart';
 
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:5000';
@@ -24,16 +25,19 @@ class ApiService {
   }
 
   // Header getter
-  Map<String, String> _getHeaders() {
-    final headers = {
-      'Content-Type': 'application/json; charset=UTF-8',
-    };
-    if (_authToken != null) {
-      headers['x-access-token'] = _authToken!;
-    }
-    return headers;
+ Map<String, String> _getHeaders() {
+  final headers = <String, String>{
+    'Content-Type': 'application/json',
+  };
+  
+  if (_authToken != null && _authToken!.isNotEmpty) {
+    headers['x-access-token'] = _authToken!; // Flask often uses this
   }
-
+  
+  print('Request headers: $headers');
+  print('Auth token: ${_authToken?.substring(0, 10)}...');
+  return headers;
+}
   // REGISTER
   Future<bool> register(String name, String email, String password, {String? profilePhoto}) async {
     final url = Uri.parse('$baseUrl/register');
@@ -70,36 +74,55 @@ class ApiService {
   }
 
   // LOGIN
-  Future<bool> login(String email, String password) async {
-    final url = Uri.parse('$baseUrl/login');
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+Future<bool> login(String email, String password) async {
+  try {
+    print('Login attempt for email: $email');
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': email,
+        'password': password,
+      }),
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _authToken = data['token'];
+    print('Login response status: ${response.statusCode}');
+    print('Login response body: ${response.body}');
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', _authToken!);
-
-        _lastError = null;
-        return true;
-      } else {
-        final data = jsonDecode(response.body);
-        _lastError = data['message'] ?? 'Giriş başarısız';
-        return false;
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      
+      // Token'ı class seviyesinde set et
+      _authToken = data['token'];
+      
+      // SharedPreferences'a kaydet
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data['token']);
+      await prefs.setString('auth_token', data['token']);
+      
+      // ÖNEMLİ: User ID'yi de kaydet
+      if (data['user'] != null && data['user']['id'] != null) {
+        await prefs.setString('current_user_id', data['user']['id'].toString());
+        print('User ID saved: ${data['user']['id']}');
       }
-    } catch (e) {
-      _lastError = 'Giriş işlemi sırasında hata: $e';
-      print('Login error: $e');
+      
+      _lastError = null;
+      print('Login successful, token set: ${_authToken?.substring(0, 10)}...');
+      return true;
+      
+    } else {
+      final data = json.decode(response.body);
+      _lastError = data['error'] ?? data['message'] ?? 'Giriş başarısız';
+      print('Login failed: $_lastError');
       return false;
     }
+  } catch (e) {
+    _lastError = 'Sunucuya bağlanılamadı: $e';
+    print('Login error: $e');
+    return false;
   }
-
+}
   // LOGOUT
   Future<void> logout() async {
     _authToken = null;
@@ -109,80 +132,164 @@ class ApiService {
   }
 
   // KULLANICILAR - MISSING METHOD
-  Future<List<dynamic>> getUsers() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/users'),
-        headers: _getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 401) {
-        _lastError = 'Kimlik doğrulama gerekli.';
-        throw Exception('Authentication required.');
+// KULLANICILAR - DÜZELTME
+// 3. API Service'e eklenecek düzeltilmiş getUserProfile metodu
+// Updated getUserProfile method in ApiService
+Future<User> getUserProfile(String userId) async {
+  try {
+    print('getUserProfile çağrısı yapılıyor, userId: $userId');
+    print('Token mevcut: ${_authToken != null}');
+    print('Base URL: $baseUrl');
+    
+    // Get current user ID to check if this is the current user's profile
+    final currentUserId = await getCurrentUserId();
+    
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: _getHeaders(),
+    );
+    
+    print('getUserProfile response status: ${response.statusCode}');
+    print('getUserProfile response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('Parsed user data: $data');
+      
+      Map<String, dynamic> userData;
+      
+      // Handle both array and object responses
+      if (data is List && data.isNotEmpty) {
+        userData = data[0];
+      } else if (data is Map<String, dynamic>) {
+        userData = data;
       } else {
-        _lastError = 'Kullanıcıları yüklerken hata oluştu.';
-        throw Exception('Failed to load users.');
+        throw Exception('Beklenmeyen veri formatı');
       }
-    } catch (e) {
-      _lastError = 'Kullanıcıları yüklerken hata oluştu: $e';
-      throw Exception(_lastError);
-    }
-  }
-
-  // ÜRÜNLER
-  Future<List<dynamic>> getProducts() async {
-    try {
-      print('Getting products with token: ${_authToken != null ? 'mevcut' : 'yok'}');
-      final response = await http.get(
-        Uri.parse('$baseUrl/products'),
-        headers: _getHeaders(),
-      );
-      print('Products response status: ${response.statusCode}');
-      print('Products response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 401) {
-        _lastError = 'Kimlik doğrulama gerekli.';
-        throw Exception('Authentication required.');
-      } else {
-        _lastError = 'Ürünleri yüklerken hata oluştu.';
-        throw Exception('Failed to load products.');
+      
+      // Check if user is being followed (only if not current user's profile)
+      bool isFollowing = false;
+      if (currentUserId != null && currentUserId != userId) {
+        try {
+          // Check follow status
+          isFollowing = await checkIfFollowing(userId);
+        } catch (e) {
+          print('Follow status check failed: $e');
+          // Continue without follow status
+        }
       }
-    } catch (e) {
-      _lastError = 'Ürünleri yüklerken hata oluştu: $e';
-      throw Exception(_lastError);
+      
+      // Add isFollowing to user data
+      userData['is_following'] = isFollowing;
+      
+      return User.fromJson(userData);
+      
+    } else if (response.statusCode == 404) {
+      throw Exception('Kullanıcı profili bulunamadı');
+    } else if (response.statusCode == 401) {
+      throw Exception('Yetkilendirme hatası');
+    } else {
+      throw Exception('Profile loading failed: ${response.statusCode}');
     }
-  }
-
-  // ÜRÜN DETAYI - MISSING METHOD
-  Future<Map<String, dynamic>?> getProductDetail(int productId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/product/$productId'),
-        headers: _getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 404) {
-        _lastError = 'Ürün bulunamadı.';
-        return null;
-      } else if (response.statusCode == 401) {
-        _lastError = 'Kimlik doğrulama gerekli.';
-        throw Exception('Authentication required.');
-      } else {
-        _lastError = 'Ürün detayı yüklenirken hata oluştu.';
-        throw Exception('Failed to load product detail.');
-      }
-    } catch (e) {
-      _lastError = 'Ürün detayı yüklenirken hata oluştu: $e';
-      throw Exception(_lastError);
+  } catch (e) {
+    print('getUserProfile error: $e');
+    if (e.toString().contains('FormatException')) {
+      throw Exception('Geçersiz JSON formatı');
     }
+    throw Exception('Network error: $e');
   }
+}
 
+// Add this helper method to check if current user is following another user
+Future<bool> checkIfFollowing(String userId) async {
+  try {
+    final currentUserId = await getCurrentUserId();
+    if (currentUserId == null) return false;
+    
+    final following = await getFollowing(currentUserId);
+    
+    // Check if the userId exists in the following list
+    return following.any((user) => user['id'].toString() == userId);
+    
+  } catch (e) {
+    print('checkIfFollowing error: $e');
+    return false;
+  }
+}
+// 4. Eksik olan kullanıcı incelemelerini getirme metodu
+Future<List<dynamic>> getUserReviews(String userId) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user-reviews/$userId'),
+      headers: _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 401) {
+      _lastError = 'Kimlik doğrulama gerekli.';
+      throw Exception('Authentication required.');
+    } else {
+      _lastError = 'Kullanıcı incelemeleri yüklenirken hata oluştu.';
+      throw Exception('Failed to load user reviews.');
+    }
+  } catch (e) {
+    _lastError = 'Kullanıcı incelemeleri yüklenirken hata oluştu: $e';
+    throw Exception(_lastError);
+  }
+}
+
+// 5. Profil güncelleme metodu
+Future<Map<String, dynamic>> updateUserProfile({
+  required String userId,
+  String? name,
+  String? email,
+  String? profilePhoto,
+}) async {
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: _getHeaders(),
+      body: jsonEncode({
+        if (name != null) 'name': name,
+        if (email != null) 'email': email,
+        if (profilePhoto != null) 'profile_photo': profilePhoto,
+      }),
+    );
+
+    final responseData = json.decode(response.body);
+    if (response.statusCode == 200) {
+      return {'success': true, 'data': responseData};
+    } else {
+      _lastError = responseData['error'] ?? 'Profil güncellenirken hata oluştu.';
+      return {'success': false, 'message': _lastError};
+    }
+  } catch (e) {
+    _lastError = 'Profil güncellenirken hata oluştu: $e';
+    return {'success': false, 'message': _lastError};
+  }
+}
+
+// 7. Debug için API durumunu kontrol etme metodu
+Future<Map<String, dynamic>> getApiStatus() async {
+  try {
+    final response = await http.get(
+      Uri.parse('$baseUrl/status'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    
+    return {
+      'status_code': response.statusCode,
+      'body': response.body,
+      'success': response.statusCode == 200,
+    };
+  } catch (e) {
+    return {
+      'success': false,
+      'error': e.toString(),
+    };
+  }
+}
   // ÜRÜN EKLE - MISSING METHOD
   Future<Map<String, dynamic>> addProduct({
     required String name,
@@ -263,6 +370,115 @@ class ApiService {
       return {'success': false, 'message': _lastError};
     }
   }
+  // KULLANICI TAKİP ET
+  Future<Map<String, dynamic>> followUser(String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/follow'),
+        headers: _getHeaders(),
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': responseData};
+      } else {
+        _lastError = responseData['error'] ?? 'Kullanıcı takip edilirken hata oluştu.';
+        return {'success': false, 'message': _lastError};
+      }
+    } catch (e) {
+      _lastError = 'Kullanıcı takip edilirken hata oluştu: $e';
+      return {'success': false, 'message': _lastError};
+    }
+  }
+
+  // KULLANICI TAKİPTEN ÇIK
+  Future<Map<String, dynamic>> unfollowUser(String userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/follow/$userId'),
+        headers: _getHeaders(),
+      );
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': responseData};
+      } else {
+        _lastError = responseData['error'] ?? 'Kullanıcı takipten çıkarılırken hata oluştu.';
+        return {'success': false, 'message': _lastError};
+      }
+    } catch (e) {
+      _lastError = 'Kullanıcı takipten çıkarılırken hata oluştu: $e';
+      return {'success': false, 'message': _lastError};
+    }
+  }
+
+  // TAKİPÇİLERİ GETİR
+  Future<List<dynamic>> getFollowers(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/followers/$userId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 401) {
+        _lastError = 'Kimlik doğrulama gerekli.';
+        throw Exception('Authentication required.');
+      } else {
+        _lastError = 'Takipçiler yüklenirken hata oluştu.';
+        throw Exception('Failed to load followers.');
+      }
+    } catch (e) {
+      _lastError = 'Takipçiler yüklenirken hata oluştu: $e';
+      throw Exception(_lastError);
+    }
+  }
+
+  // TAKİP EDİLENLERİ GETİR
+  Future<List<dynamic>> getFollowing(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/following/$userId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 401) {
+        _lastError = 'Kimlik doğrulama gerekli.';
+        throw Exception('Authentication required.');
+      } else {
+        _lastError = 'Takip edilenler yüklenirken hata oluştu.';
+        throw Exception('Failed to load following.');
+      }
+    } catch (e) {
+      _lastError = 'Takip edilenler yüklenirken hata oluştu: $e';
+      throw Exception(_lastError);
+    }
+  }
+
+  // CURRENT USER ID'Yİ ALMA METODu
+  Future<String?> getCurrentUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('current_user_id');
+    } catch (e) {
+      print('Current user ID alınırken hata: $e');
+      return null;
+    }
+  }
+
+  // CURRENT USER ID'Yİ KAYDETME METODU (Login sonrasında kullanılacak)
+  Future<void> saveCurrentUserId(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('current_user_id', userId);
+    } catch (e) {
+      print('Current user ID kaydedilirken hata: $e');
+    }
+  }
 
   // FAVORİLER - MISSING METHOD
   Future<List<dynamic>> getFavorites() async {
@@ -309,6 +525,64 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> removeFavorite(int productId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/favorites/$productId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        final responseData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': responseData['error'] ?? 'Favori kaldırma işlemi başarısız.'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Hata: $e'};
+    }
+  } 
+  // ÜRÜNLER - GET PRODUCTS METHOD
+Future<List<dynamic>> getProducts() async {
+  try {
+    print('getProducts çağrılıyor...');
+    print('Token mevcut: ${_authToken != null}');
+    
+    final response = await http.get(
+      Uri.parse('$baseUrl/products'),
+      headers: _getHeaders(),
+    );
+
+    print('getProducts response status: ${response.statusCode}');
+    print('getProducts response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      _lastError = null;
+      final data = json.decode(response.body);
+      
+      if (data is List) {
+        print('${data.length} ürün bulundu');
+        return data;
+      } else {
+        print('Beklenmeyen veri formatı: ${data.runtimeType}');
+        return [];
+      }
+    } else if (response.statusCode == 401) {
+      _lastError = 'Kimlik doğrulama gerekli.';
+      throw Exception('Authentication required.');
+    } else {
+      _lastError = 'Ürünleri yüklerken hata oluştu. Status: ${response.statusCode}';
+      throw Exception('Failed to load products. Status: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('getProducts error: $e');
+    _lastError = 'Ürünleri yüklerken hata oluştu: $e';
+    throw Exception(_lastError);
+  }
+}
   // İNCELEMELER - MISSING METHOD
   Future<List<dynamic>> getProductReviews(int productId) async {
     try {
@@ -439,6 +713,7 @@ class ApiService {
     print('=== SEARCH DEBUG END ===');
   }
 }
+
   // TEST BAĞLANTI
   Future<bool> testConnection() async {
     try {
