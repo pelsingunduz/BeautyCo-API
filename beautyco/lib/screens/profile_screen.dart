@@ -4,13 +4,13 @@ import '../services/api_service.dart';
 import '../models/user.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final String? userId; // Null ise current user, değilse specified user
-  final bool isCurrentUser; // Giriş yapan kullanıcının profili mi?
+  final String? userId;
+  final bool isCurrentUser;
   
   const ProfileScreen({
     super.key,
     this.userId,
-    this.isCurrentUser = true,
+    this.isCurrentUser = false, // Varsayılan olarak false yapıldı
   });
 
   @override
@@ -31,15 +31,25 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   bool isFollowersLoading = false;
   bool isFollowingLoading = false;
   String? errorMessage;
-  String? currentUserId; // Giriş yapan kullanıcının ID'si
+  String? currentUserId;
   bool isFollowing = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadCurrentUserId();
-    _loadProfile();
+    debugPrint('ProfileScreen initState - userId: ${widget.userId}, isCurrentUser: ${widget.isCurrentUser}');
+    _initializeProfile();
+  }
+
+  @override
+  void didUpdateWidget(ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Widget parametreleri değiştiğinde profili yeniden yükle
+    if (oldWidget.userId != widget.userId || oldWidget.isCurrentUser != widget.isCurrentUser) {
+      debugPrint('ProfileScreen didUpdateWidget - Reloading profile');
+      _initializeProfile();
+    }
   }
 
   @override
@@ -48,84 +58,121 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     super.dispose();
   }
 
-  // Giriş yapan kullanıcının ID'sini al
+  // Ana başlatma fonksiyonu
+  Future<void> _initializeProfile() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+        // Önceki verileri temizle
+        userData = null;
+        userReviews = [];
+        userFavorites = [];
+        followers = [];
+        following = [];
+        isFollowing = false;
+      });
+
+      // Önce current user ID'sini al
+      await _loadCurrentUserId();
+      
+      // Sonra profil verilerini yükle
+      await _loadProfile();
+      
+    } catch (e) {
+      debugPrint('Profile initialization error: $e');
+      setState(() {
+        errorMessage = 'Profil yüklenirken hata oluştu: $e';
+        isLoading = false;
+      });
+    }
+  }
+
   Future<void> _loadCurrentUserId() async {
     try {
+      // Her seferinde fresh current user ID al
       currentUserId = await _apiService.getCurrentUserId();
-      debugPrint('Current user ID: $currentUserId');
+      debugPrint('✅ Current user ID loaded: $currentUserId');
+      
+      if (currentUserId == null) {
+        throw Exception('Kullanıcı oturumu bulunamadı');
+      }
     } catch (e) {
-      debugPrint('Current user ID alınırken hata: $e');
+      debugPrint('❌ Current user ID loading error: $e');
+      throw e;
     }
   }
 
   Future<void> _loadProfile() async {
     try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-
       String? targetUserId;
       
-      if (widget.userId != null) {
+      // Hangi kullanıcının profilini yükleyeceğimizi belirle
+      if (widget.userId != null && widget.userId!.isNotEmpty) {
         // Belirli bir kullanıcının profili
         targetUserId = widget.userId!;
-      } else {
+        debugPrint('📋 Loading specific user profile: $targetUserId');
+      } else if (widget.isCurrentUser || (widget.userId == null || widget.userId!.isEmpty)) {
         // Current user'ın profili
-        targetUserId = await _apiService.getCurrentUserId();
-        
-        // Eğer current_user_id yoksa, kullanıcıyı login sayfasına yönlendir
-        if (targetUserId == null) {
-          setState(() {
-            errorMessage = 'Kullanıcı oturumu bulunamadı. Lütfen tekrar giriş yapın.';
-            isLoading = false;
-          });
-          return;
-        }
+        targetUserId = currentUserId;
+        debugPrint('👤 Loading current user profile: $targetUserId');
+      } else {
+        // Fallback
+        targetUserId = currentUserId;
+        debugPrint('🔄 Fallback to current user profile: $targetUserId');
       }
 
-      debugPrint('Loading profile for user ID: $targetUserId');
+      if (targetUserId == null || targetUserId.isEmpty) {
+        throw Exception('Kullanıcı ID\'si bulunamadı');
+      }
+
+      debugPrint('🔄 Loading profile for user ID: $targetUserId');
       
-      // Kullanıcı profilini yükle
+      // Kullanıcı profilini yükle - her seferinde fresh data al
       userData = await _apiService.getUserProfile(targetUserId);
+      debugPrint('✅ User data loaded: ${userData?.name} (${userData?.email}) - ID: ${userData?.id}');
       
       // Takip durumunu kontrol et (eğer başka birinin profili ise)
       if (!_isCurrentUserProfile && currentUserId != null) {
         await _checkFollowStatus(targetUserId);
+        debugPrint('📊 Follow status checked: $isFollowing');
       }
       
       // Takipçi ve takip edilen listelerini yükle
       await _loadFollowData(targetUserId);
+      debugPrint('👥 Follow data loaded - Followers: ${followers.length}, Following: ${following.length}');
       
       // Favorileri yükle (sadece kendi profilimiz ise)
       if (_isCurrentUserProfile) {
         await _loadFavorites();
+        debugPrint('❤️ Favorites loaded: ${userFavorites.length}');
       }
       
       setState(() {
         isLoading = false;
       });
       
+      debugPrint('🎉 Profile loading completed successfully');
+      
     } catch (e) {
+      debugPrint('❌ Profile loading error: $e');
       setState(() {
         errorMessage = e.toString().replaceAll('Exception: ', '');
         isLoading = false;
       });
-      debugPrint('Profile loading error: $e');
     }
   }
 
-  // Takip durumunu kontrol et
   Future<void> _checkFollowStatus(String targetUserId) async {
     try {
       final followingList = await _apiService.getFollowing(currentUserId!);
       isFollowing = followingList.any((user) => user['id'].toString() == targetUserId);
+      debugPrint('Follow status for $targetUserId: $isFollowing');
     } catch (e) {
       debugPrint('Follow status check error: $e');
     }
   }
 
-  // Takipçi ve takip edilen verilerini yükle
   Future<void> _loadFollowData(String userId) async {
     try {
       final followersData = await _apiService.getFollowers(userId);
@@ -137,19 +184,19 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       });
     } catch (e) {
       debugPrint('Follow data loading error: $e');
+      // Bu hata kritik değil, profil yüklemeye devam edebiliriz
     }
   }
 
-  // Favorileri yükle
   Future<void> _loadFavorites() async {
     try {
       userFavorites = await _apiService.getFavorites();
     } catch (e) {
       debugPrint('Favorites loading error: $e');
+      // Bu hata kritik değil, profil yüklemeye devam edebiliriz
     }
   }
 
-  // Takip/takipten çık işlemi
   Future<void> _toggleFollow() async {
     if (userData == null || currentUserId == null) return;
     
@@ -168,7 +215,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           isFollowing = !isFollowing;
         });
         
-        // Takipçi sayısını güncelle
         await _loadFollowData(targetUserId);
         
         if (mounted) {
@@ -206,7 +252,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       final result = await _apiService.removeFavorite(productId);
       
       if (result['success']) {
-        await _loadFavorites(); // Favorileri yeniden yükle
+        await _loadFavorites();
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -238,10 +284,15 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     }
   }
 
-  // Profil sahibi current user mı kontrol et
   bool get _isCurrentUserProfile {
-    if (userData == null || currentUserId == null) return widget.isCurrentUser;
-    return userData!.id.toString() == currentUserId;
+    if (userData == null || currentUserId == null) {
+      debugPrint('⚠️ Cannot determine if current user profile - userData: ${userData != null}, currentUserId: ${currentUserId != null}');
+      return widget.isCurrentUser;
+    }
+    
+    final isCurrentUser = userData!.id.toString() == currentUserId;
+    debugPrint('🔍 Is current user profile: $isCurrentUser (userData.id: ${userData!.id}, currentUserId: $currentUserId)');
+    return isCurrentUser;
   }
 
   @override
@@ -264,7 +315,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             IconButton(
               icon: const Icon(Icons.settings_outlined, color: Colors.black),
               onPressed: () {
-                // Ayarlar sayfasına yönlendirme
                 Navigator.pushNamed(context, '/settings');
               },
             ),
@@ -275,14 +325,15 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           : errorMessage != null
               ? _buildErrorState()
               : userData == null
-                  ? const Center(child: Text('Profil bulunamadı'))
+                  ? _buildNoDataState()
                   : RefreshIndicator(
-                      onRefresh: _loadProfile,
+                      onRefresh: _initializeProfile,
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildDebugInfo(), // Debug bilgileri için
                             _buildProfileHeader(),
                             _buildProfileStats(),
                             _buildBio(),
@@ -291,6 +342,63 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                         ),
                       ),
                     ),
+    );
+  }
+
+  // Debug bilgileri göster (sadece debug modda)
+  Widget _buildDebugInfo() {
+    if (!kDebugMode) return const SizedBox();
+    
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🐛 DEBUG INFO:', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Widget userId: ${widget.userId}'),
+          Text('Widget isCurrentUser: ${widget.isCurrentUser}'),
+          Text('Current userId: $currentUserId'),
+          Text('User data ID: ${userData?.id}'),
+          Text('User data name: ${userData?.name}'),
+          Text('Is current user profile: $_isCurrentUserProfile'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoDataState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.person_off, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Profil bulunamadı',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Kullanıcı bilgileri yüklenemedi',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _initializeProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.pink,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Tekrar Dene'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -314,16 +422,25 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            errorMessage!,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[500],
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red[200]!),
+            ),
+            child: Text(
+              errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.red[700],
+              ),
             ),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadProfile,
+            onPressed: _initializeProfile,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.pink,
               foregroundColor: Colors.white,
@@ -358,7 +475,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                       image: NetworkImage(userData!.profilePhoto!),
                       fit: BoxFit.cover,
                       onError: (error, stackTrace) {
-                        // Resim yüklenemezse varsayılan avatar göster
+                        debugPrint('Profile photo load error: $error');
                       },
                     )
                   : null,
@@ -390,11 +507,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Buton: Kendi profili ise "Profili Düzenle", başkasının profili ise "Takip Et/Takipten Çık"
                 GestureDetector(
                   onTap: isCurrentUser 
                       ? () {
-                          // Profil düzenleme sayfasına yönlendirme
                           Navigator.pushNamed(context, '/edit-profile');
                         }
                       : _toggleFollow,
@@ -432,7 +547,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         children: [
           GestureDetector(
             onTap: () {
-              // İncelemeleri göster
               _showReviewsDialog();
             },
             child: _buildStat('İnceleme', userData!.reviewCount.toString()),
@@ -440,7 +554,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           _buildVerticalDivider(),
           GestureDetector(
             onTap: () {
-              // Takipçileri göster
               _showFollowersDialog();
             },
             child: _buildStat('Takipçi', followers.length.toString()),
@@ -448,7 +561,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           _buildVerticalDivider(),
           GestureDetector(
             onTap: () {
-              // Takip edilenleri göster
               _showFollowingDialog();
             },
             child: _buildStat('Takip', following.length.toString()),
@@ -587,7 +699,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       padding: const EdgeInsets.only(top: 12),
       itemCount: reviews.length,
       itemBuilder: (context, index) {
-        // Convert Review object to Map for backward compatibility
         final reviewData = _reviewToMap(reviews[index]);
         return _buildReviewItem(reviewData);
       },
@@ -624,13 +735,10 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     );
   }
 
-  // Helper method to convert Review object to Map
   Map<String, dynamic> _reviewToMap(dynamic review) {
     if (review is Map<String, dynamic>) {
       return review;
     }
-    // If review is a Review object, convert it to Map
-    // Adjust this based on your Review model structure
     return {
       'product_name': review.productName ?? '',
       'brand': review.brand ?? '',
@@ -791,7 +899,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     );
   }
 
-  // Takipçileri göster
   void _showFollowersDialog() {
     showDialog(
       context: context,
@@ -833,7 +940,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     );
   }
 
-  // Takip edilenleri göster
   void _showFollowingDialog() {
     showDialog(
       context: context,
@@ -874,7 +980,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       },
     );
   }
-
   // İncelemeleri göster
   void _showReviewsDialog() {
     final reviews = userData?.reviews ?? [];

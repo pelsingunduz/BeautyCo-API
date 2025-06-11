@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:5000';
@@ -458,17 +459,38 @@ Future<Map<String, dynamic>> getApiStatus() async {
       throw Exception(_lastError);
     }
   }
-
-  // CURRENT USER ID'Yİ ALMA METODu
-  Future<String?> getCurrentUserId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('current_user_id');
-    } catch (e) {
-      print('Current user ID alınırken hata: $e');
+Future<String?> getCurrentUserId() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    
+    if (token == null) {
+      debugPrint('❌ No auth token found');
       return null;
     }
+    
+    // Token'dan user_id'sini çıkar
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      debugPrint('❌ Invalid token format');
+      return null;
+    }
+    
+    // JWT payload'ı decode et
+    final payload = parts[1];
+    final normalizedPayload = base64Url.normalize(payload);
+    final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
+    final payloadMap = json.decode(decodedPayload);
+    
+    final userId = payloadMap['user_id']?.toString();
+    debugPrint('🔍 Token decoded user_id: $userId');
+    return userId;
+    
+  } catch (e) {
+    debugPrint('❌ Error decoding token: $e');
+    return null;
   }
+}
 
   // CURRENT USER ID'Yİ KAYDETME METODU (Login sonrasında kullanılacak)
   Future<void> saveCurrentUserId(String userId) async {
