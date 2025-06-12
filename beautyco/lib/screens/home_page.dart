@@ -362,70 +362,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final filteredPosts = _selectedCategory == 'TÜM'
-        ? _posts
-        : _posts.where((post) => post['category'] == _selectedCategory).toList();
+@override
+Widget build(BuildContext context) {
+  final filteredPosts = _selectedCategory == 'TÜM'
+      ? _posts
+      : _posts.where((post) => post['category'] == _selectedCategory).toList();
 
-    final List<Widget> _screens = [
-      _isLoading
-          ? const Center(child: CircularProgressIndicator(color: primaryRed))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) =>
-                        _buildCategoryButton(_categories[index]),
-                  ),
+  final List<Widget> _screens = [
+    _isLoading
+        ? const Center(child: CircularProgressIndicator(color: primaryRed))
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 50,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) =>
+                      _buildCategoryButton(_categories[index]),
                 ),
-                const Divider(),
-                Expanded(
-                  child: filteredPosts.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Henüz gönderi yok.',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
+              ),
+              const Divider(),
+              Expanded(
+                child: filteredPosts.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Henüz gönderi yok.',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 16,
+                            color: Colors.grey,
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: filteredPosts.length,
-                          itemBuilder: (context, index) =>
-                              _buildPostCard(filteredPosts[index], index),
                         ),
-                ),
-              ],
-            ),
-      Container(),
-      const SearchScreen(),
-      ProfileScreen(isCurrentUser: true, favoritePosts: _favoritePosts),
-    ];
+                      )
+                    : ListView.builder(
+                        itemCount: filteredPosts.length,
+                        itemBuilder: (context, index) =>
+                            _buildPostCard(filteredPosts[index], index),
+                      ),
+              ),
+            ],
+          ),
+    const CreatePostScreen(), 
+    const SearchScreen(),
+    ProfileScreen(isCurrentUser: true, favoritePosts: _favoritePosts),
+  ];
 
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: primaryRed,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Sayfa'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Paylaş'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Ara'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-        ],
-      ),
-    );
-  }
+  return Scaffold(
+    appBar: _buildAppBar(),
+    body: _screens[_selectedIndex],
+    bottomNavigationBar: BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      selectedItemColor: primaryRed,
+      unselectedItemColor: Colors.grey,
+      onTap: _onItemTapped,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Sayfa'),
+        BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Paylaş'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Ara'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+      ],
+    ),
+  );
+}
 
   AppBar _buildAppBar() {
     if (_selectedIndex == 3) {

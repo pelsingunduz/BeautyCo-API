@@ -188,6 +188,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     print('Filtered products count: ${_filteredProducts.length}');
   }
 
+  // Ürün seçimini temizle ve listeye geri dön
+  void _clearProductSelection() {
+    setState(() {
+      _selectedProduct = null;
+      _rating = 0;
+      _titleController.clear();
+      _reviewController.clear();
+      _searchController.clear();
+      _filteredProducts = List.from(_products);
+    });
+  }
+
   Future<void> _submitReview() async {
     if (_selectedProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -284,15 +296,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         elevation: 2,
         shadowColor: darkRed.withAlpha((0.2 * 255).toInt()),
         leading: IconButton(
-          icon: Icon(Icons.close, color: primaryRed, size: 28),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(
+            _selectedProduct != null ? Icons.arrow_back : Icons.close, 
+            color: primaryRed, 
+            size: 28
+          ),
+          onPressed: () {
+            if (_selectedProduct != null) {
+              // Ürün seçili ise ürün listesine geri dön
+              _clearProductSelection();
+            } else {
+              // Ürün seçili değilse ana sayfaya dön
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Row(
           children: [
             Icon(Icons.edit_note, color: primaryRed, size: 28),
             const SizedBox(width: 8),
             Text(
-              'İnceleme Oluştur',
+              _selectedProduct != null ? 'İnceleme Yaz' : 'İnceleme Oluştur',
               style: GoogleFonts.montserrat(
                 color: primaryRed,
                 fontWeight: FontWeight.w600,
@@ -302,15 +326,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SearchScreen()),
-              );
-            },
-          ),
+          if (_selectedProduct == null) // Sadece ürün seçili değilken search butonunu göster
+            IconButton(
+              icon: const Icon(Icons.search, color: Colors.black),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SearchScreen()),
+                );
+              },
+            ),
           // Debug butonu (geliştirme aşamasında)
           if (true) // Debug modunda göster
             IconButton(
@@ -332,6 +357,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ),
         child: _buildBody(),
       ),
+      // Tab bar kaldırıldı - artık home page'deki tab bar kullanılacak
     );
   }
 
@@ -396,23 +422,29 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.only(
+          left: 20.0,
+          right: 20.0,
+          top: 20.0,
+          bottom: 20.0, // Tab bar padding'i kaldırıldı
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _productPromptCard(),
-            const SizedBox(height: 20),
-            _searchField(),
-            const SizedBox(height: 20),
-            _selectedProduct == null
-                ? _productList()
-                : _selectedProductDetail(),
+            if (_selectedProduct == null) ...[
+              _productPromptCard(),
+              const SizedBox(height: 20),
+              _searchField(),
+              const SizedBox(height: 20),
+              _productList(),
+            ] else ...[
+              _selectedProductDetail(),
+            ],
           ],
         ),
       ),
     );
   }
-
 
   Widget _productPromptCard() {
     return Container(
@@ -658,7 +690,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   _selectedProduct!.brand ?? 'Marka bilgisi yok',
