@@ -4,6 +4,8 @@ import '../theme.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
 import 'search_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'edit_profile_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -974,5 +976,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
       ),
     );
+  }
+
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token') ?? '';
   }
 }

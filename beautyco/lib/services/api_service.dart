@@ -811,4 +811,33 @@ Future<List<dynamic>> getProducts() async {
       throw Exception(_lastError);
     }
   }
+
+  Future<Map<String, dynamic>> updateProfile(String userId, String name, String? profilePhoto) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': await _getToken(),
+        },
+        body: jsonEncode({
+          'name': name,
+          'profile_photo': profilePhoto,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(jsonDecode(response.body)['error'] ?? 'Profil güncellenirken bir hata oluştu');
+      }
+    } catch (e) {
+      throw Exception('Profil güncellenirken bir hata oluştu: $e');
+    }
+  }
+
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token') ?? '';
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
@@ -459,8 +460,21 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                 const SizedBox(height: 12),
                 GestureDetector(
                   onTap: isCurrentUser 
-                      ? () {
-                          Navigator.pushNamed(context, '/edit-profile');
+                      ? () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditProfileScreen(
+                                userId: userData!.id.toString(),
+                                currentName: userData!.name,
+                                currentProfilePhoto: userData!.profilePhoto,
+                              ),
+                            ),
+                          );
+                          
+                          if (result == true) {
+                            _initializeProfile();
+                          }
                         }
                       : _toggleFollow,
                   child: Container(
@@ -633,7 +647,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             const Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              _isCurrentUserProfile ? 'Henüz inceleme yapmadınız' : 'Henüz inceleme yapmamış',
+              _isCurrentUserProfile ? 'Henüz inceleme yapmadınız' : 'Henüz inceleme yapmış',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,

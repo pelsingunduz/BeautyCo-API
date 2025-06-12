@@ -509,6 +509,64 @@ def get_user_profile(current_user, user_id):
         cursor.close()
         conn.close()
 
+@app.route('/users/<user_id>', methods=['PUT'])
+@token_required
+def update_user_profile(current_user, user_id):
+    # Sadece kendi profilini güncelleyebilir
+    if current_user != int(user_id):
+        return jsonify({"error": "Başka kullanıcıların profilini düzenleyemezsiniz."}), 403
+
+    data = request.get_json()
+    name = data.get('name')
+    profile_photo = data.get('profile_photo')
+
+    if not name and not profile_photo:
+        return jsonify({"error": "Güncellenecek alan bulunamadı."}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        update_fields = []
+        params = []
+        
+        if name:
+            update_fields.append("name = %s")
+            params.append(name)
+        if profile_photo:
+            update_fields.append("profile_photo = %s")
+            params.append(profile_photo)
+            
+        params.append(user_id)
+        
+        query = f"""
+            UPDATE users 
+            SET {', '.join(update_fields)}
+            WHERE user_id = %s
+            RETURNING user_id, name, email, profile_photo, created_at
+        """
+        
+        cursor.execute(query, params)
+        updated_user = cursor.fetchone()
+        conn.commit()
+        
+        return jsonify({
+            "message": "Profil başarıyla güncellendi.",
+            "user": {
+                "id": updated_user[0],
+                "name": updated_user[1],
+                "email": updated_user[2],
+                "profile_photo": updated_user[3],
+                "created_at": updated_user[4].isoformat() if updated_user[4] else None
+            }
+        }), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 # Bağlantı testi endpoint'i
 @app.route('/test', methods=['GET'])
 def test_connection():
