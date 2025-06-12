@@ -4,6 +4,7 @@ import 'package:beautyco/screens/profile_screen.dart';
 import 'package:beautyco/screens/create_post.dart';
 import 'package:beautyco/screens/search_screen.dart';
 import 'package:beautyco/theme.dart';
+import '../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -16,25 +17,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   String _selectedCategory = 'TÜM';
   final TextEditingController _commentController = TextEditingController();
+  List<Map<String, dynamic>> _favoritePosts = [];
+  final ApiService _apiService = ApiService();
+  bool _isLoading = true;
+  String? _currentUserId;
 
-  final List<Map<String, dynamic>> _posts = [
-    {
-      'username': 'ayse_96',
-      'product': 'Glowy Foundation',
-      'content': 'Harika bir kapatıcılığı var, cildimde çok doğal durdu!',
-      'category': 'Makyaj',
-      'showCommentField': false,
-      'comments': [],
-    },
-    {
-      'username': 'melisbeauty',
-      'product': 'Vitamin C Serum',
-      'content': 'Cildim çok daha aydınlık oldu, öneririm.',
-      'category': 'Cilt Bakımı',
-      'showCommentField': false,
-      'comments': [],
-    },
-  ];
+  List<Map<String, dynamic>> _posts = [];
 
   final List<String> _categories = [
     'TÜM',
@@ -44,6 +32,54 @@ class _HomeScreenState extends State<HomeScreen> {
     'Parfüm',
     'Kişisel Bakım',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await ApiService.init();
+    _currentUserId = await _apiService.getCurrentUserId();
+    _fetchFeedPosts();
+  }
+
+  Future<void> _fetchFeedPosts() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final fetchedPosts = await _apiService.getFeedPosts();
+      setState(() {
+        _posts = fetchedPosts.map<Map<String, dynamic>>((post) {
+          return {
+            'username': post['username'] ?? 'Bilinmeyen Kullanıcı',
+            'product': post['product_name'] ?? 'Ürün Adı',
+            'content': post['content'] ?? 'İnceleme metni yok.',
+            'category': post['category_name'] ?? 'Genel',
+            'showCommentField': false,
+            'comments': [],
+            'rating': post['rating'] ?? 0.0,
+            'brand': post['brand'] ?? 'Marka Yok',
+            'productPhoto': post['product_photo'] ?? '',
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Ana sayfa gönderileri yüklenirken hata: $e');
+      setState(() {
+        _isLoading = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gönderiler yüklenirken hata oluştu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
+    }
+  }
 
   void _onItemTapped(int index) async {
     if (index == 1) {
@@ -55,20 +91,24 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result != null && result is Map) {
         setState(() {
           _posts.insert(0, {
-            'username': 'sen', // Kullanıcı adını dinamik yapabilirsin
+            'username': 'Sen',
             'product': result['product'] ?? '',
             'content': result['review'] ?? '',
             'category': result['category'] ?? 'Makyaj',
             'showCommentField': false,
+            'comments': [],
             'rating': result['rating'] ?? 0,
             'brand': result['brand'] ?? '',
             'productPhoto': result['productPhoto'] ?? '',
-            'comments': [],
           });
           _selectedIndex = 0;
-          _selectedCategory = result['category'] ?? 'Makyaj';
+          _selectedCategory = result['category'] ?? 'TÜM';
         });
       }
+    } else if (index == 3) {
+      setState(() {
+        _selectedIndex = index;
+      });
     } else {
       setState(() {
         _selectedIndex = index;
@@ -104,172 +144,221 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostCard(Map<String, dynamic> post, int index) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Stack(
+      children: [
+        Card(
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(child: Icon(Icons.person)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post['username'],
-                        style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    const CircleAvatar(child: Icon(Icons.person)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            post['username'] ?? 'Anonim',
+                            style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '${post['brand'] ?? ''} - ${post['product'] ?? 'Ürün Adı' }',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          if (post['rating'] != null && post['rating'] > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.star, color: primaryRed, size: 16),
+                                  Text(
+                                    ' ${post['rating'].toStringAsFixed(1)}',
+                                    style: GoogleFonts.montserrat(
+                                      color: primaryRed,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
-                      Text(
-                        '${post['brand'] ?? ''} - ${post['product']}',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        _favoritePosts.any((fav) => fav['product_id'] == post['product_id'])
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.pink,
+                        size: 28,
                       ),
-                    ],
-                  ),
-                ),
-                if (post['rating'] != null && post['rating'] > 0)
-                  Row(
-                    children: [
-                      Icon(Icons.star, color: primaryRed, size: 16),
-                      Text(
-                        ' ${post['rating']}',
-                        style: GoogleFonts.montserrat(
-                          color: primaryRed,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (post['productPhoto'] != null && post['productPhoto'].isNotEmpty)
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: NetworkImage(post['productPhoto']),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              )
-            else
-              Container(
-                height: 200,
-                color: Colors.grey[200],
-                child: const Center(child: Icon(Icons.photo, size: 50, color: Colors.grey)),
-              ),
-            const SizedBox(height: 10),
-            Text(
-              post['content'],
-              style: GoogleFonts.montserrat(fontSize: 14),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Kategori: ${post['category']}',
-                  style: GoogleFonts.montserrat(color: Colors.grey[600], fontSize: 12),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _posts[index]['showCommentField'] = !post['showCommentField'];
-                      if (!post['showCommentField']) {
-                        _commentController.clear();
-                      }
-                    });
-                  },
-                  child: Text(
-                    post['showCommentField'] ? 'Yorumu Kapat' : 'Yorum Yap',
-                    style: const TextStyle(color: primaryRed),
-                  ),
-                ),
-              ],
-            ),
-            if (post['showCommentField'])
-              Column(
-                children: [
-                  TextField(
-                    controller: _commentController,
-                    decoration: InputDecoration(
-                      hintText: 'Yorumunuzu yazın...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.all(8),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.send, color: primaryRed),
-                        onPressed: () {
-                          if (_commentController.text.trim().isNotEmpty) {
-                            setState(() {
-                              // Yeni yorumu ekle
-                              if (!_posts[index].containsKey('comments')) {
-                                _posts[index]['comments'] = [];
-                              }
-                              _posts[index]['comments'].add({
-                                'username': 'sen', // Kullanıcı adını dinamik yapabilirsin
-                                'content': _commentController.text.trim(),
-                                'timestamp': DateTime.now().toString(),
-                              });
-                              _commentController.clear();
+                      onPressed: () {
+                        setState(() {
+                          final existingFavoriteIndex = _favoritePosts.indexWhere((fav) => fav['product_id'] == post['product_id']);
+
+                          if (existingFavoriteIndex != -1) {
+                            _favoritePosts.removeAt(existingFavoriteIndex);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Favorilerden çıkarıldı'),
+                                backgroundColor: Colors.pink,
+                              ),
+                            );
+                          } else {
+                            _favoritePosts.add({
+                              'product_id': post['product_id'],
+                              'name': post['product'],
+                              'brand': post['brand'],
+                              'product_photo': post['productPhoto'],
+                              'average_rating': post['rating'],
                             });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Favorilere eklendi'),
+                                backgroundColor: Colors.pink,
+                              ),
+                            );
                           }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (post['productPhoto'] != null && post['productPhoto'].isNotEmpty)
+                  Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: NetworkImage(post['productPhoto']),
+                        fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {
+                          debugPrint('Resim yüklenirken hata: $exception');
                         },
                       ),
                     ),
+                  )
+                else
+                  Container(
+                    height: 200,
+                    color: Colors.grey[200],
+                    child: const Center(child: Icon(Icons.photo, size: 50, color: Colors.grey)),
                   ),
-                  const SizedBox(height: 8),
-                  if (post['comments'] != null && post['comments'].isNotEmpty)
-                    Column(
-                      children: [
-                        const Divider(),
-                        ...post['comments'].map<Widget>((comment) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const CircleAvatar(
-                                radius: 12,
-                                child: Icon(Icons.person, size: 16),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      comment['username'],
-                                      style: GoogleFonts.montserrat(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      comment['content'],
-                                      style: GoogleFonts.montserrat(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        )).toList(),
-                      ],
+                const SizedBox(height: 10),
+                Text(
+                  post['content'] ?? 'İnceleme metni bulunamadı.',
+                  style: GoogleFonts.montserrat(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Kategori: ${post['category'] ?? 'Belirtilmemiş'}',
+                      style: GoogleFonts.montserrat(color: Colors.grey[600], fontSize: 12),
                     ),
-                ],
-              ),
-          ],
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _posts[index]['showCommentField'] = !post['showCommentField'];
+                          if (!post['showCommentField']) {
+                            _commentController.clear();
+                          }
+                        });
+                      },
+                      child: Text(
+                        post['showCommentField'] ? 'Yorumu Kapat' : 'Yorum Yap',
+                        style: const TextStyle(color: primaryRed),
+                      ),
+                    ),
+                  ],
+                ),
+                if (post['showCommentField'])
+                  Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _commentController,
+                        decoration: InputDecoration(
+                          hintText: 'Yorumunuzu yazın...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.all(8),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.send, color: primaryRed),
+                            onPressed: () {
+                              if (_commentController.text.trim().isNotEmpty) {
+                                setState(() {
+                                  if (!_posts[index].containsKey('comments')) {
+                                    _posts[index]['comments'] = [];
+                                  }
+                                  _posts[index]['comments'].add({
+                                    'username': 'sen',
+                                    'content': _commentController.text.trim(),
+                                    'timestamp': DateTime.now().toString(),
+                                  });
+                                  _commentController.clear();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (post['comments'] != null && post['comments'].isNotEmpty)
+                        Column(
+                          children: [
+                            const Divider(),
+                            ...post['comments'].map<Widget>((comment) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const CircleAvatar(
+                                    radius: 12,
+                                    child: Icon(Icons.person, size: 16),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comment['username'],
+                                          style: GoogleFonts.montserrat(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Text(
+                                          comment['content'],
+                                          style: GoogleFonts.montserrat(fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )).toList(),
+                          ],
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -280,43 +369,48 @@ class _HomeScreenState extends State<HomeScreen> {
         : _posts.where((post) => post['category'] == _selectedCategory).toList();
 
     final List<Widget> _screens = [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 50,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) =>
-                  _buildCategoryButton(_categories[index]),
+      _isLoading
+          ? const Center(child: CircularProgressIndicator(color: primaryRed))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 50,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) =>
+                        _buildCategoryButton(_categories[index]),
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: filteredPosts.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Henüz gönderi yok.',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredPosts.length,
+                          itemBuilder: (context, index) =>
+                              _buildPostCard(filteredPosts[index], index),
+                        ),
+                ),
+              ],
             ),
-          ),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredPosts.length,
-              itemBuilder: (context, index) =>
-                  _buildPostCard(filteredPosts[index], index),
-            ),
-          ),
-        ],
-      ),
-      Container(), // Paylaş sekmesi artık burada değil
+      Container(),
       const SearchScreen(),
-      const ProfileScreen(),
+      ProfileScreen(isCurrentUser: true, favoritePosts: _favoritePosts),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: primaryRed,
-        title: Text(
-          'BeautyCo',
-          style: GoogleFonts.pacifico(color: Colors.white),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _buildAppBar(),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -331,5 +425,39 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  AppBar _buildAppBar() {
+    if (_selectedIndex == 3) {
+      return AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Montserrat',
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.black),
+            onPressed: () {
+              Navigator.pushNamed(context, '/settings');
+            },
+          ),
+        ],
+      );
+    } else {
+      return AppBar(
+        backgroundColor: primaryRed,
+        title: Text(
+          'BeautyCo',
+          style: GoogleFonts.pacifico(color: Colors.white),
+        ),
+        centerTitle: true,
+      );
+    }
   }
 }

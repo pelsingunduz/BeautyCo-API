@@ -6,6 +6,7 @@ import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart'; // SearchScreen import'u eklendi
 import 'screens/create_post.dart';    // CreatePostScreen import'u eklendi
 import 'screens/product_detail_screen.dart'; // ProductDetailScreen import'u eklendi
+import 'screens/settings_screen.dart';
 import 'package:beautyco/theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:beautyco/services/api_service.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => ProfileScreen(),
         '/search': (context) => const SearchScreen(),
         '/create-post': (context) => const CreatePostScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
       // Route'lar arası veri geçişi için onGenerateRoute kullanabilirsiniz
       onGenerateRoute: (settings) {
@@ -55,4 +57,20 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+}
+
+Map<String, dynamic> _reviewToMap(dynamic review) {
+  // Sadece Map ile çalış
+  if (review is Map<String, dynamic>) {
+    return {
+      'product_name': review['product']?['name'] ?? '',
+      'brand': review['product']?['brand'] ?? '',
+      'rating': review['rating'] ?? 0,
+      'review_text': review['review_text'] ?? '',
+      'review_date': review['review_date'] ?? '',
+      'product_photo': review['product']?['product_photo'] ?? '',
+    };
+  }
+  // Map değilse boş map döndür
+  return {};
 }

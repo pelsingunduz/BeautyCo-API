@@ -93,6 +93,7 @@ class Review {
   final DateTime createdAt;
   final int userId;
   final String? userName;
+  final Product? product; // Add this line
 
   Review({
     required this.id,
@@ -101,18 +102,22 @@ class Review {
     required this.createdAt,
     required this.userId,
     this.userName,
+    this.product, // Add this line
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
       id: json['id'] ?? 0,
-      content: json['content'] ?? '',
+      content: json['content'] ?? json['review_text'] ?? '',
       rating: (json['rating'] ?? 0).toDouble(),
       createdAt: json['created_at'] != null 
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
       userId: json['user_id'] ?? 0,
-      userName: json['user_name'],
+      userName: json['user']?['name'],
+      product: json['product'] != null 
+          ? Product.fromJson(json['product'])
+          : null,
     );
   }
 
@@ -124,6 +129,43 @@ class Review {
       'created_at': createdAt.toIso8601String(),
       'user_id': userId,
       'user_name': userName,
+      'product': product?.toJson(),
+    };
+  }
+}
+
+class Product { // Add this new class
+  final int id;
+  final String name;
+  final String? brand;
+  final String? productPhoto;
+  final double? averageRating;
+
+  Product({
+    required this.id,
+    required this.name,
+    this.brand,
+    this.productPhoto,
+    this.averageRating,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      brand: json['brand'],
+      productPhoto: json['product_photo'],
+      averageRating: (json['average_rating'] ?? 0.0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'brand': brand,
+      'product_photo': productPhoto,
+      'average_rating': averageRating,
     };
   }
 }

@@ -224,13 +224,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     });
 
     try {
-      final reviewText = _titleController.text.isNotEmpty 
-        ? "${_titleController.text}\n\n${_reviewController.text}" 
-        : _reviewController.text;
-
       final response = await _apiService.addReview(
         _selectedProduct!.id,
-        reviewText,
+        _reviewController.text,
         _rating.toInt(),
       );
 
@@ -251,7 +247,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         // Ana sayfaya dönerken gerekli verileri gönder
         Navigator.pop(context, {
           'product': _selectedProduct!.name,
-          'review': reviewText,
+          'review': _reviewController.text,
           'category': _selectedCategory,
           'rating': _rating,
           'brand': _selectedProduct!.brand,

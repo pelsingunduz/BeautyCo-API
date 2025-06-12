@@ -428,6 +428,7 @@ def get_product_reviews(current_user, product_id):
     # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
     reviews = []
     for review in reviews_data:
+        print(f"DEBUG: Review text from DB: {review[1]}")
         reviews.append({
             'review_id': review[0],
             'review_text': review[1],
@@ -444,6 +445,70 @@ def get_product_reviews(current_user, product_id):
     
     return jsonify(reviews)
 
+@app.route('/users/<user_id>', methods=['GET'])
+@token_required
+def get_user_profile(current_user, user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Kullanıcı bilgilerini al
+        cursor.execute("""
+            SELECT user_id, name, email, profile_photo, created_at,
+                   (SELECT COUNT(*) FROM reviews WHERE user_id = users.user_id) as review_count
+            FROM users 
+            WHERE user_id = %s
+        """, (user_id,))
+        user_data = cursor.fetchone()
+        
+        if not user_data:
+            return jsonify({"error": "Kullanıcı bulunamadı"}), 404
+            
+        # Kullanıcının incelemelerini al
+        cursor.execute("""
+            SELECT r.review_id, r.review_text, r.rating, r.review_date,
+                   p.product_id, p.name as product_name, p.brand, p.product_photo
+            FROM reviews r
+            JOIN products p ON r.product_id = p.product_id
+            WHERE r.user_id = %s
+            ORDER BY r.review_date DESC
+        """, (user_id,))
+        reviews_data = cursor.fetchall()
+        
+        # Veriyi düzenle
+        user = {
+            'id': user_data[0],
+            'name': user_data[1],
+            'email': user_data[2],
+            'profile_photo': user_data[3],
+            'created_at': user_data[4].isoformat() if user_data[4] else None,
+            'review_count': user_data[5],
+            'reviews': []
+        }
+        
+        # İncelemeleri ekle
+        for review in reviews_data:
+            print(f"DEBUG: Review text from DB: {review[1]}")
+            user['reviews'].append({
+                'id': review[0],
+                'content': review[1],
+                'rating': review[2],
+                'created_at': review[3].isoformat() if review[3] else None,
+                'product': {
+                    'id': review[4],
+                    'name': review[5],
+                    'brand': review[6],
+                    'product_photo': review[7]
+                }
+            })
+        
+        return jsonify(user)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 # Bağlantı testi endpoint'i
 @app.route('/test', methods=['GET'])
 def test_connection():
@@ -456,6 +521,46 @@ def test_connection():
         return jsonify({"message": "Veritabanı bağlantısı başarılı!"}), 200
     except Exception as e:
         return jsonify({"error": f"Veritabanı bağlantı hatası: {str(e)}"}), 500
+
+@app.route('/feed', methods=['GET'])
+@token_required
+def get_feed_posts(current_user):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                r.review_id, r.review_text, r.rating, r.review_date,
+                p.product_id, p.name as product_name, p.brand, p.product_photo,
+                u.user_id, u.name as user_name, u.profile_photo
+            FROM reviews r
+            JOIN products p ON r.product_id = p.product_id
+            JOIN users u ON r.user_id = u.user_id
+            ORDER BY r.review_date DESC
+        """)
+        feed_data = cursor.fetchall()
+
+        posts = []
+        for post in feed_data:
+            posts.append({
+                'review_id': post[0],
+                'content': post[1],
+                'rating': float(post[2]) if post[2] else 0.0,
+                'review_date': post[3].isoformat() if post[3] else None,
+                'product_id': post[4],
+                'product_name': post[5],
+                'brand': post[6],
+                'product_photo': post[7],
+                'user_id': post[8],
+                'username': post[9],
+                'user_profile_photo': post[10],
+            })
+        return jsonify(posts)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 if __name__ == '__main__':
     init_db()  # Uygulamayı başlatmadan önce veritabanını hazırla

@@ -138,24 +138,31 @@ Future<bool> login(String email, String password) async {
 // Updated getUserProfile method in ApiService
 Future<User> getUserProfile(String userId) async {
   try {
-    print('getUserProfile çağrısı yapılıyor, userId: $userId');
-    print('Token mevcut: ${_authToken != null}');
-    print('Base URL: $baseUrl');
+    print('=== GET USER PROFILE DEBUG START ===');
+    print('1. UserId: $userId');
+    print('2. Token mevcut: ${_authToken != null}');
+    print('3. Token değeri: ${_authToken?.substring(0, 10)}...');
+    print('4. Base URL: $baseUrl');
     
     // Get current user ID to check if this is the current user's profile
     final currentUserId = await getCurrentUserId();
+    print('5. Current User ID: $currentUserId');
     
-    final response = await http.get(
-      Uri.parse('$baseUrl/users/$userId'),
-      headers: _getHeaders(),
-    );
+    final url = Uri.parse('$baseUrl/users/$userId');
+    print('6. Request URL: $url');
     
-    print('getUserProfile response status: ${response.statusCode}');
-    print('getUserProfile response body: ${response.body}');
+    final headers = _getHeaders();
+    print('7. Request Headers: $headers');
+    
+    print('8. Making HTTP request...');
+    final response = await http.get(url, headers: headers);
+    
+    print('9. Response Status: ${response.statusCode}');
+    print('10. Response Body: ${response.body}');
     
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      print('Parsed user data: $data');
+      print('11. Parsed user data: $data');
       
       Map<String, dynamic> userData;
       
@@ -165,6 +172,7 @@ Future<User> getUserProfile(String userId) async {
       } else if (data is Map<String, dynamic>) {
         userData = data;
       } else {
+        print('12. Unexpected data format: ${data.runtimeType}');
         throw Exception('Beklenmeyen veri formatı');
       }
       
@@ -172,32 +180,40 @@ Future<User> getUserProfile(String userId) async {
       bool isFollowing = false;
       if (currentUserId != null && currentUserId != userId) {
         try {
-          // Check follow status
           isFollowing = await checkIfFollowing(userId);
+          print('13. Follow status: $isFollowing');
         } catch (e) {
-          print('Follow status check failed: $e');
-          // Continue without follow status
+          print('14. Follow status check failed: $e');
         }
       }
       
-      // Add isFollowing to user data
       userData['is_following'] = isFollowing;
       
+      print('15. Returning User object...');
       return User.fromJson(userData);
       
     } else if (response.statusCode == 404) {
+      print('12. User not found');
       throw Exception('Kullanıcı profili bulunamadı');
     } else if (response.statusCode == 401) {
+      print('12. Authentication error');
       throw Exception('Yetkilendirme hatası');
     } else {
+      print('12. Unexpected status code: ${response.statusCode}');
       throw Exception('Profile loading failed: ${response.statusCode}');
     }
   } catch (e) {
-    print('getUserProfile error: $e');
+    print('=== GET USER PROFILE ERROR ===');
+    print('Error: $e');
+    print('Error type: ${e.runtimeType}');
+    print('Stack trace: ${StackTrace.current}');
+    
     if (e.toString().contains('FormatException')) {
       throw Exception('Geçersiz JSON formatı');
     }
     throw Exception('Network error: $e');
+  } finally {
+    print('=== GET USER PROFILE DEBUG END ===');
   }
 }
 
@@ -771,5 +787,28 @@ Future<List<dynamic>> getProducts() async {
   // Hata mesajını temizle
   static void clearError() {
     _lastError = null;
+  }
+
+  // Ana Sayfa Akışı için İncelemeleri Getir
+  Future<List<dynamic>> getFeedPosts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/feed'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 401) {
+        _lastError = 'Kimlik doğrulama gerekli.';
+        throw Exception('Authentication required.');
+      } else {
+        _lastError = 'Akış gönderileri yüklenirken hata oluştu.';
+        throw Exception('Failed to load feed posts.');
+      }
+    } catch (e) {
+      _lastError = 'Akış gönderileri yüklenirken hata oluştu: $e';
+      throw Exception(_lastError);
+    }
   }
 }

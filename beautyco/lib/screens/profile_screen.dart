@@ -6,11 +6,13 @@ import '../models/user.dart';
 class ProfileScreen extends StatefulWidget {
   final String? userId;
   final bool isCurrentUser;
+  final List<Map<String, dynamic>>? favoritePosts;
   
   const ProfileScreen({
     super.key,
     this.userId,
     this.isCurrentUser = false, // Varsayılan olarak false yapıldı
+    this.favoritePosts,
   });
 
   @override
@@ -297,32 +299,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          _isCurrentUserProfile ? 'Profil' : 'Kullanıcı Profili',
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        actions: [
-          if (_isCurrentUserProfile)
-            IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Colors.black),
-              onPressed: () {
-                Navigator.pushNamed(context, '/settings');
-              },
-            ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.pink))
-          : errorMessage != null
+    return isLoading
+        ? const Center(child: CircularProgressIndicator(color: Colors.pink))
+        : errorMessage != null
               ? _buildErrorState()
               : userData == null
                   ? _buildNoDataState()
@@ -333,7 +312,6 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDebugInfo(), // Debug bilgileri için
                             _buildProfileHeader(),
                             _buildProfileStats(),
                             _buildBio(),
@@ -341,35 +319,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                           ],
                         ),
                       ),
-                    ),
-    );
-  }
-
-  // Debug bilgileri göster (sadece debug modda)
-  Widget _buildDebugInfo() {
-    if (!kDebugMode) return const SizedBox();
-    
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('🐛 DEBUG INFO:', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('Widget userId: ${widget.userId}'),
-          Text('Widget isCurrentUser: ${widget.isCurrentUser}'),
-          Text('Current userId: $currentUserId'),
-          Text('User data ID: ${userData?.id}'),
-          Text('User data name: ${userData?.name}'),
-          Text('Is current user profile: $_isCurrentUserProfile'),
-        ],
-      ),
-    );
+                    );
   }
 
   Widget _buildNoDataState() {
@@ -699,14 +649,18 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       padding: const EdgeInsets.only(top: 12),
       itemCount: reviews.length,
       itemBuilder: (context, index) {
-        final reviewData = _reviewToMap(reviews[index]);
-        return _buildReviewItem(reviewData);
+        final review = reviews[index];
+        return _buildReviewItem(review);
       },
     );
   }
 
   Widget _buildFavoritesTab() {
-    if (userFavorites.isEmpty) {
+    final allFavorites = [
+      ...userFavorites,
+      if (widget.favoritePosts != null) ...widget.favoritePosts!,
+    ];
+    if (allFavorites.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -725,32 +679,29 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         ),
       );
     }
-    
     return ListView.builder(
       padding: const EdgeInsets.only(top: 12),
-      itemCount: userFavorites.length,
+      itemCount: allFavorites.length,
       itemBuilder: (context, index) {
-        return _buildFavoriteItem(userFavorites[index]);
+        final favorite = allFavorites[index];
+        if (favorite.containsKey('content')) {
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              leading: const Icon(Icons.favorite, color: Colors.pink),
+              title: Text(favorite['product'] ?? 'Ürün Adı'),
+              subtitle: Text(favorite['content'] ?? ''),
+            ),
+          );
+        }
+        return _buildFavoriteItem(favorite);
       },
     );
   }
 
-  Map<String, dynamic> _reviewToMap(dynamic review) {
-    if (review is Map<String, dynamic>) {
-      return review;
-    }
-    return {
-      'product_name': review.productName ?? '',
-      'brand': review.brand ?? '',
-      'rating': review.rating ?? 0,
-      'review_text': review.reviewText ?? '',
-      'review_date': review.createdAt?.toIso8601String() ?? '',
-      'product_photo': review.productPhoto ?? '',
-    };
-  }
-
-  Widget _buildReviewItem(Map<String, dynamic> review) {
-    final reviewDate = DateTime.tryParse(review['review_date'] ?? '') ?? DateTime.now();
+  Widget _buildReviewItem(Review review) {
+    debugPrint('➡️ _buildReviewItem oluşturulan review: $review');
+    final reviewDate = review.createdAt;
     final formattedDate = '${reviewDate.day}/${reviewDate.month}/${reviewDate.year}';
     
     return Card(
@@ -762,50 +713,52 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           children: [
             Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    review['product_photo'] ?? '',
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 50,
-                        height: 50,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, color: Colors.grey),
-                      );
-                    },
+                if (review.product?.productPhoto != null && review.product!.productPhoto!.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      review.product!.productPhoto!,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image, color: Colors.grey),
+                        );
+                      },
+                    ),
                   ),
-                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        review['product_name'] ?? 'Ürün Adı',
+                        review.product?.name ?? 'Ürün Adı',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           fontFamily: 'Montserrat',
                         ),
                       ),
-                      Text(
-                        review['brand'] ?? '',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontFamily: 'Montserrat',
+                      if (review.product?.brand != null && review.product!.brand!.isNotEmpty)
+                        Text(
+                          review.product!.brand!,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontFamily: 'Montserrat',
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
                 Row(
                   children: List.generate(5, (index) {
                     return Icon(
-                      index < (review['rating'] ?? 0) ? Icons.star : Icons.star_border,
+                      index < review.rating ? Icons.star : Icons.star_border,
                       color: Colors.amber,
                       size: 16,
                     );
@@ -814,21 +767,49 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              review['review_text'] ?? '',
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                height: 1.4,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Açıklama:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Montserrat',
+                    color: Colors.pink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.pink.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    review.content.isNotEmpty
+                        ? review.content
+                        : 'İnceleme içeriği bulunamadı.',
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text(
-              formattedDate,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-                fontFamily: 'Montserrat',
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontFamily: 'Montserrat',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -980,7 +961,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       },
     );
   }
-  // İncelemeleri göster
+
   void _showReviewsDialog() {
     final reviews = userData?.reviews ?? [];
     
@@ -997,8 +978,8 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                 : ListView.builder(
                     itemCount: reviews.length,
                     itemBuilder: (context, index) {
-                      final reviewData = _reviewToMap(reviews[index]);
-                      return _buildReviewItem(reviewData);
+                      final review = reviews[index];
+                      return _buildReviewItem(review);
                     },
                   ),
           ),
