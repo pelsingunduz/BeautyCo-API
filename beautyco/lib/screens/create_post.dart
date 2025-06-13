@@ -259,14 +259,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         );
         
         // Ana sayfaya dönerken gerekli verileri gönder
-        Navigator.pop(context, {
-          'product': _selectedProduct!.name,
-          'review': _reviewController.text,
-          'category': _selectedCategory,
-          'rating': _rating,
-          'brand': _selectedProduct!.brand,
-          'productPhoto': _selectedProduct!.productPhoto,
-        });
+              Navigator.pop(context, {
+        'product': _selectedProduct!.name,
+        'review': _reviewController.text,
+        'category': _selectedCategory,
+        'rating': _rating,
+        'brand': _selectedProduct!.brand,
+        'productPhoto': _selectedProduct!.productPhoto,
+      });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

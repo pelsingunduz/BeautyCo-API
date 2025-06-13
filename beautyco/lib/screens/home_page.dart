@@ -97,10 +97,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
+  if (index == 1) {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _posts.insert(0, {
+          'username': result['username'] ?? 'Sen',
+          'product': result['product'],
+          'content': result['review'],
+          'category': result['category'],
+          'rating': result['rating'],
+          'brand': result['brand'],
+          'productPhoto': result['productPhoto'],
+          'comments': [],
+          'showCommentField': false,
+          'product_id': null,
+        });
+        _selectedCategory = 'TÜM';
+        _selectedIndex = 0;
+      });
+    }
+  } else {
     setState(() {
       _selectedIndex = index;
     });
   }
+}
 
   Widget _buildCategoryButton(String title) {
     final bool isSelected = _selectedCategory == title;

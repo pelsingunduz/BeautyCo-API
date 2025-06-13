@@ -16,14 +16,16 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "default_secret_key")
 # PostgreSQL bağlantı bilgilerini .env'den al
 DB_URL = os.getenv("DATABASE_URL")
 
+
 def get_db_connection():
     conn = psycopg2.connect(DB_URL, sslmode='require')
     return conn
 
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Users tablosu
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
@@ -35,7 +37,7 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Oluşturulma zamanı
     )
     ''')
-    
+
     # Categories tablosu
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS categories (
@@ -43,7 +45,7 @@ def init_db():
         category_name VARCHAR(100) NOT NULL  -- Kategori Adı (ör. Cilt bakımı, Saç bakımı)
     )
     ''')
-    
+
     # Products tablosu
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS products (
@@ -56,7 +58,7 @@ def init_db():
         product_photo TEXT                   -- Ürün Fotoğrafı (URL veya dosya yolu)
     )
     ''')
-    
+
     # Reviews tablosu
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS reviews (
@@ -70,7 +72,7 @@ def init_db():
         replies TEXT                           -- Yanıtlar (isteğe bağlı metin listesi)
     )
     ''')
-    
+
     # Favorites tablosu
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS favorites (
@@ -80,9 +82,9 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Favorileme zamanı
     )
     ''')
-    
+
     conn.commit()
-    
+
     # Örnek kategoriler ekle (eğer yoksa)
     cursor.execute("SELECT COUNT(*) FROM categories")
     if cursor.fetchone()[0] == 0:
@@ -92,7 +94,7 @@ def init_db():
         """)
         conn.commit()
         print("Örnek kategoriler eklendi.")
-    
+
     # Örnek ürünler ekle (eğer yoksa)
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
@@ -107,10 +109,11 @@ def init_db():
         """)
         conn.commit()
         print("Örnek ürünler eklendi.")
-    
+
     cursor.close()
     conn.close()
     print("Veritabanı tabloları başarıyla oluşturuldu ve örnek veriler eklendi.")
+
 
 def token_required(f):
     @wraps(f)
@@ -119,16 +122,19 @@ def token_required(f):
         if not token:
             return jsonify({'message': 'Token eksik!'}), 401
         try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            data = jwt.decode(
+                token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = data['user_id']
         except:
             return jsonify({'message': 'Geçersiz token!'}), 401
         return f(current_user, *args, **kwargs)
     return decorated
 
+
 @app.route('/')
 def home():
     return "Hoş geldiniz! Flask API'niz çalışıyor."
+
 
 @app.route('/register', methods=['POST'])
 def register_user():
@@ -137,12 +143,13 @@ def register_user():
     email = data.get('email')
     password = data.get('password')
     profile_photo = data.get('profile_photo')
-    
+
     # Basit validasyon
     if not all([name, email, password]):
         return jsonify({"error": "İsim, email ve şifre gereklidir."}), 400
 
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed_password = bcrypt.hashpw(password.encode(
+        'utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -164,18 +171,20 @@ def register_user():
         cursor.close()
         conn.close()
 
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    
+
     if not all([email, password]):
         return jsonify({'message': 'Email ve şifre gereklidir!'}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT user_id, password_hash FROM users WHERE email = %s", (email,))
+    cursor.execute(
+        "SELECT user_id, password_hash FROM users WHERE email = %s", (email,))
     user = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -189,16 +198,18 @@ def login():
     else:
         return jsonify({'message': 'Geçersiz email veya şifre!'}), 401
 
+
 @app.route('/users', methods=['GET'])
 @token_required
 def get_users(current_user):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT user_id, name, email, profile_photo, created_at FROM users")
+    cursor.execute(
+        "SELECT user_id, name, email, profile_photo, created_at FROM users")
     users_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
     users = []
     for user in users_data:
@@ -209,8 +220,9 @@ def get_users(current_user):
             'profile_photo': user[3],
             'created_at': user[4].isoformat() if user[4] else None
         })
-    
+
     return jsonify(users)
+
 
 @app.route('/product', methods=['POST'])
 @token_required
@@ -244,16 +256,18 @@ def add_product(current_user):
         cursor.close()
         conn.close()
 
+
 @app.route('/products', methods=['GET'])
 @token_required
 def get_products(current_user):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT product_id, name, brand, category_id, description, average_rating, product_photo FROM products")
+    cursor.execute(
+        "SELECT product_id, name, brand, category_id, description, average_rating, product_photo FROM products")
     products_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Flutter tarafının beklediği formatta veri dönüştürme
     products = []
     for product in products_data:
@@ -261,13 +275,15 @@ def get_products(current_user):
             'id': product[0],  # Flutter'da product_id olarak kullanılıyor
             'name': product[1],
             'brand': product[2],
-            'categoryId': product[3],  # Flutter'da categoryId olarak kullanılıyor
+            # Flutter'da categoryId olarak kullanılıyor
+            'categoryId': product[3],
             'description': product[4],
             'averageRating': float(product[5]) if product[5] else None,
             'productPhoto': product[6]
         })
-    
+
     return jsonify(products)
+
 
 @app.route('/favorite', methods=['POST'])
 @token_required
@@ -295,6 +311,7 @@ def add_favorite(current_user):
         cursor.close()
         conn.close()
 
+
 @app.route('/favorites', methods=['GET'])
 @token_required
 def get_user_favorites(current_user):
@@ -309,7 +326,7 @@ def get_user_favorites(current_user):
     favorites_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
     favorites = []
     for fav in favorites_data:
@@ -323,8 +340,31 @@ def get_user_favorites(current_user):
             'product_photo': fav[6],
             'favorited_at': fav[7].isoformat() if fav[7] else None
         })
-    
+
     return jsonify(favorites)
+
+
+@app.route('/favorites/<int:product_id>', methods=['DELETE'])
+@token_required
+def remove_favorite(current_user, product_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "DELETE FROM favorites WHERE user_id = %s AND product_id = %s",
+            (current_user, product_id)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Favori bulunamadı veya yetkiniz yok."}), 404
+        return jsonify({"success": True, "message": "Favori başarıyla kaldırıldı."}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Favori kaldırılırken bir hata oluştu: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 
 @app.route('/category', methods=['POST'])
 @token_required
@@ -352,6 +392,7 @@ def add_category(current_user):
         cursor.close()
         conn.close()
 
+
 @app.route('/categories', methods=['GET'])
 @token_required
 def get_categories(current_user):
@@ -361,7 +402,7 @@ def get_categories(current_user):
     categories_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Flutter tarafının beklediği formatta veri dönüştürme
     categories = []
     for category in categories_data:
@@ -369,8 +410,9 @@ def get_categories(current_user):
             'id': category[0],  # Flutter'da id olarak kullanılıyor
             'name': category[1]  # Flutter'da name olarak kullanılıyor
         })
-    
+
     return jsonify(categories)
+
 
 @app.route('/review', methods=['POST'])
 @token_required
@@ -379,7 +421,7 @@ def add_review(current_user):
     product_id = data.get('product_id')
     review_text = data.get('review_text')
     rating = data.get('rating')
-    
+
     if not product_id or not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
         return jsonify({"error": "Ürün ID ve 1-5 arası geçerli bir puan gereklidir."}), 400
 
@@ -392,13 +434,13 @@ def add_review(current_user):
             (product_id, current_user, review_text, rating)
         )
         review_id = cursor.fetchone()[0]
-        
+
         # Ürünün ortalama puanını güncelle
         cursor.execute(
             "UPDATE products SET average_rating = (SELECT AVG(rating) FROM reviews WHERE product_id = %s) WHERE product_id = %s",
             (product_id, product_id)
         )
-        
+
         conn.commit()
         return jsonify({"success": True, "message": "İnceleme başarıyla eklendi.", "review_id": review_id}), 201
     except psycopg2.Error as e:
@@ -407,6 +449,7 @@ def add_review(current_user):
     finally:
         cursor.close()
         conn.close()
+
 
 @app.route('/reviews/<int:product_id>', methods=['GET'])
 @token_required
@@ -424,7 +467,7 @@ def get_product_reviews(current_user, product_id):
     reviews_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     # Veriyi daha anlaşılır hale getirmek için kısa sözlüklere dönüştürme
     reviews = []
     for review in reviews_data:
@@ -442,8 +485,9 @@ def get_product_reviews(current_user, product_id):
                 'profile_photo': review[8]
             }
         })
-    
+
     return jsonify(reviews)
+
 
 @app.route('/users/<user_id>', methods=['GET'])
 @token_required
@@ -459,10 +503,10 @@ def get_user_profile(current_user, user_id):
             WHERE user_id = %s
         """, (user_id,))
         user_data = cursor.fetchone()
-        
+
         if not user_data:
             return jsonify({"error": "Kullanıcı bulunamadı"}), 404
-            
+
         # Kullanıcının incelemelerini al
         cursor.execute("""
             SELECT r.review_id, r.review_text, r.rating, r.review_date,
@@ -473,7 +517,7 @@ def get_user_profile(current_user, user_id):
             ORDER BY r.review_date DESC
         """, (user_id,))
         reviews_data = cursor.fetchall()
-        
+
         # Veriyi düzenle
         user = {
             'id': user_data[0],
@@ -484,7 +528,7 @@ def get_user_profile(current_user, user_id):
             'review_count': user_data[5],
             'reviews': []
         }
-        
+
         # İncelemeleri ekle
         for review in reviews_data:
             print(f"DEBUG: Review text from DB: {review[1]}")
@@ -500,14 +544,15 @@ def get_user_profile(current_user, user_id):
                     'product_photo': review[7]
                 }
             })
-        
+
         return jsonify(user)
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()
+
 
 @app.route('/users/<user_id>', methods=['PUT'])
 @token_required
@@ -528,27 +573,27 @@ def update_user_profile(current_user, user_id):
     try:
         update_fields = []
         params = []
-        
+
         if name:
             update_fields.append("name = %s")
             params.append(name)
         if profile_photo:
             update_fields.append("profile_photo = %s")
             params.append(profile_photo)
-            
+
         params.append(user_id)
-        
+
         query = f"""
             UPDATE users 
             SET {', '.join(update_fields)}
             WHERE user_id = %s
             RETURNING user_id, name, email, profile_photo, created_at
         """
-        
+
         cursor.execute(query, params)
         updated_user = cursor.fetchone()
         conn.commit()
-        
+
         return jsonify({
             "message": "Profil başarıyla güncellendi.",
             "user": {
@@ -559,7 +604,7 @@ def update_user_profile(current_user, user_id):
                 "created_at": updated_user[4].isoformat() if updated_user[4] else None
             }
         }), 200
-        
+
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
@@ -567,7 +612,61 @@ def update_user_profile(current_user, user_id):
         cursor.close()
         conn.close()
 
+
+@app.route('/review/<int:review_id>', methods=['DELETE'])
+@token_required
+def delete_review(current_user, review_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Önce review'ın mevcut kullanıcıya ait olup olmadığını kontrol et
+        cursor.execute("""
+            SELECT user_id, product_id FROM reviews WHERE review_id = %s
+        """, (review_id,))
+        
+        review = cursor.fetchone()
+        if not review:
+            return jsonify({"error": "İnceleme bulunamadı"}), 404
+            
+        # current_user zaten user_id integer değeri, dictionary değil
+        if review[0] != current_user:
+            return jsonify({"error": "Bu incelemeyi silme yetkiniz yok"}), 403
+        
+        product_id = review[1]  # Ortalama puanı güncellemek için product_id'yi al
+        
+        # Review'ı sil
+        cursor.execute("""
+            DELETE FROM reviews WHERE review_id = %s
+        """, (review_id,))
+        
+        # Ürünün ortalama puanını güncelle
+        cursor.execute("""
+            UPDATE products 
+            SET average_rating = (
+                SELECT AVG(rating) 
+                FROM reviews 
+                WHERE product_id = %s
+            ) 
+            WHERE product_id = %s
+        """, (product_id, product_id))
+        
+        conn.commit()
+        
+        if cursor.rowcount > 0:
+            return jsonify({"success": True, "message": "İnceleme başarıyla silindi"}), 200
+        else:
+            return jsonify({"success": False, "error": "İnceleme silinemedi"}), 400
+            
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 # Bağlantı testi endpoint'i
+
+
 @app.route('/test', methods=['GET'])
 def test_connection():
     try:
@@ -580,6 +679,7 @@ def test_connection():
     except Exception as e:
         return jsonify({"error": f"Veritabanı bağlantı hatası: {str(e)}"}), 500
 
+
 @app.route('/feed', methods=['GET'])
 @token_required
 def get_feed_posts(current_user):
@@ -590,10 +690,12 @@ def get_feed_posts(current_user):
             SELECT 
                 r.review_id, r.review_text, r.rating, r.review_date,
                 p.product_id, p.name as product_name, p.brand, p.product_photo,
-                u.user_id, u.name as user_name, u.profile_photo
+                u.user_id, u.name as user_name, u.profile_photo,
+                c.category_name
             FROM reviews r
             JOIN products p ON r.product_id = p.product_id
             JOIN users u ON r.user_id = u.user_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
             ORDER BY r.review_date DESC
         """)
         feed_data = cursor.fetchall()
@@ -612,6 +714,7 @@ def get_feed_posts(current_user):
                 'user_id': post[8],
                 'username': post[9],
                 'user_profile_photo': post[10],
+                'category_name': post[11] or 'Genel'
             })
         return jsonify(posts)
     except Exception as e:
@@ -619,6 +722,7 @@ def get_feed_posts(current_user):
     finally:
         cursor.close()
         conn.close()
+
 
 if __name__ == '__main__':
     init_db()  # Uygulamayı başlatmadan önce veritabanını hazırla
