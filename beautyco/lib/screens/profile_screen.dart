@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
-import '../models/user.dart';
+import '../models/user.dart' hide Product;  // Product'ı user.dart'tan gizle
+import '../models/product.dart';  // Product'ı product.dart'tan al
 import 'edit_profile_screen.dart';
 import 'package:intl/intl.dart';
+import 'product_detail_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
   final bool isCurrentUser;
-  final List<Map<String, dynamic>>? favoritePosts;
 
   const ProfileScreen({
     super.key,
     this.userId,
     this.isCurrentUser = false, // Varsayılan olarak false yapıldı
-    this.favoritePosts,
   });
 
   @override
@@ -683,7 +683,6 @@ class ProfileScreenState extends State<ProfileScreen>
   Widget _buildFavoritesTab() {
     final allFavorites = [
       ...userFavorites,
-      if (widget.favoritePosts != null) ...widget.favoritePosts!,
     ];
     if (allFavorites.isEmpty) {
       return Center(
@@ -715,8 +714,49 @@ class ProfileScreenState extends State<ProfileScreen>
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
+              onTap: () {
+                final dynamic rawProductId = favorite['product_id'] ?? favorite['id'];
+                int? parsedProductId;
+
+                if (rawProductId is int) {
+                  parsedProductId = rawProductId;
+                } else if (rawProductId is String) {
+                  parsedProductId = int.tryParse(rawProductId);
+                }
+
+                if (parsedProductId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Favori yorumu için ürün ID'si bulunamadı veya geçersiz."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  debugPrint("DEBUG: Favori yorumu için ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+                  return;
+                }
+
+                debugPrint('DEBUG: Before Product constructor (review tab) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+                final int productIdForReviewNav = parsedProductId as int;
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductDetailScreen(
+                      product: Product(
+                        id: parsedProductId ?? 0,
+                        name: favorite['product_name'] ?? favorite['name'] ?? 'Ürün Adı',
+                        brand: favorite['brand'],
+                        description: favorite['description'],
+                        categoryId: favorite['category_id'],
+                        averageRating: favorite['average_rating']?.toDouble(),
+                        productPhoto: favorite['product_photo'],
+                      ),
+                    ),
+                  ),
+                );
+              },
               leading: const Icon(Icons.favorite, color: Colors.pink),
-              title: Text(favorite['product'] ?? 'Ürün Adı'),
+              title: Text(favorite['product_name'] ?? favorite['name'] ?? 'Ürün Adı'),
               subtitle: Text(favorite['content'] ?? ''),
             ),
           );
@@ -846,6 +886,48 @@ class ProfileScreenState extends State<ProfileScreen>
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
+        onTap: () {
+          final dynamic rawProductId = favorite['product_id'] ?? favorite['id'];
+          int? parsedProductId;
+
+          if (rawProductId is int) {
+            parsedProductId = rawProductId;
+          } else if (rawProductId is String) {
+            parsedProductId = int.tryParse(rawProductId);
+          }
+
+          if (parsedProductId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Ürün ID'si bulunamadı veya geçersiz."),
+                backgroundColor: Colors.red,
+              ),
+            );
+            debugPrint("DEBUG: Ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+            return;
+          }
+
+          debugPrint('DEBUG: Before Product constructor (favorite item) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+          final int productIdForNavigation = parsedProductId as int;
+
+          // Ürün detay sayfasına yönlendir
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProductDetailScreen(
+                product: Product(
+                  id: parsedProductId ?? 0,
+                  name: favorite['name'] ?? 'Ürün Adı',
+                  brand: favorite['brand'],
+                  description: favorite['description'],
+                  categoryId: favorite['category_id'],
+                  averageRating: favorite['average_rating']?.toDouble(),
+                  productPhoto: favorite['product_photo'],
+                ),
+              ),
+            ),
+          );
+        },
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
@@ -899,10 +981,30 @@ class ProfileScreenState extends State<ProfileScreen>
             _isCurrentUserProfile
                 ? IconButton(
                   icon: const Icon(Icons.favorite, color: Colors.pink),
-                  onPressed:
-                      () => _toggleFavorite(
-                        favorite['product_id'] ?? favorite['id'],
-                      ),
+                  onPressed: () {
+                    final dynamic rawProductId = favorite['product_id'] ?? favorite['id'];
+                    int? parsedProductId;
+
+                    if (rawProductId is int) {
+                      parsedProductId = rawProductId;
+                    } else if (rawProductId is String) {
+                      parsedProductId = int.tryParse(rawProductId);
+                    }
+
+                    if (parsedProductId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Favori kaldırmak için ürün ID'si bulunamadı veya geçersiz."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      debugPrint("DEBUG: Favori kaldırma için ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+                      return;
+                    }
+                    debugPrint('DEBUG: Before _toggleFavorite - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+                    final int productIdForToggle = parsedProductId as int;
+                    _toggleFavorite(productIdForToggle);
+                  },
                 )
                 : null,
       ),

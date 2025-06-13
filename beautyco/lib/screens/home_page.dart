@@ -17,7 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   String _selectedCategory = 'TÜM';
   final TextEditingController _commentController = TextEditingController();
-  List<Map<String, dynamic>> _favoritePosts = [];
+  Set<int> _favoritedProductIds = {};
   final ApiService _apiService = ApiService();
   bool _isLoading = true;
   String? _currentUserId;
@@ -42,7 +42,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadInitialData() async {
     await ApiService.init();
     _currentUserId = await _apiService.getCurrentUserId();
-    _fetchFeedPosts();
+    await _fetchFeedPosts();
+    await _fetchFavoritedProducts();
+  }
+
+  Future<void> _fetchFavoritedProducts() async {
+    try {
+      final fetchedFavorites = await _apiService.getFavorites();
+      setState(() {
+        _favoritedProductIds = fetchedFavorites
+            .map<int>((fav) => fav['product_id'] as int)
+            .toSet();
+      });
+    } catch (e) {
+      debugPrint('Favori ürünleri çekerken hata: $e');
+    }
   }
 
   Future<void> _fetchFeedPosts() async {
@@ -63,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'rating': post['rating'] ?? 0.0,
             'brand': post['brand'] ?? 'Marka Yok',
             'productPhoto': post['product_photo'] ?? '',
+            'product_id': post['product_id'],
           };
         }).toList();
         _isLoading = false;
@@ -115,6 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostCard(Map<String, dynamic> post, int index) {
+    final int? productId = post['product_id'] as int?;
+
     return Stack(
       children: [
         Card(
@@ -167,18 +184,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        _favoritePosts.any((fav) => fav['product_id'] == post['product_id'])
+                        productId != null && _favoritedProductIds.contains(productId)
                             ? Icons.favorite
                             : Icons.favorite_border,
                         color: Colors.pink,
                         size: 28,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          final existingFavoriteIndex = _favoritePosts.indexWhere((fav) => fav['product_id'] == post['product_id']);
+                      onPressed: () async {
+                        if (productId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Ürün ID\'si bulunamadı.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
 
-                          if (existingFavoriteIndex != -1) {
-                            _favoritePosts.removeAt(existingFavoriteIndex);
+                        try {
+                          if (_favoritedProductIds.contains(productId)) {
+                            await _apiService.removeFavorite(productId);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Favorilerden çıkarıldı'),
@@ -186,13 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                           } else {
-                            _favoritePosts.add({
-                              'product_id': post['product_id'],
-                              'name': post['product'],
-                              'brand': post['brand'],
-                              'product_photo': post['productPhoto'],
-                              'average_rating': post['rating'],
-                            });
+                            await _apiService.addFavorite(productId);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Favorilere eklendi'),
@@ -200,7 +219,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                           }
-                        });
+                          await _fetchFavoritedProducts();
+                        } catch (e) {
+                          debugPrint('Favori işlemi hatası: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Favori işlemi sırasında hata oluştu: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
                     ),
                   ],
@@ -333,70 +361,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-@override
-Widget build(BuildContext context) {
-  final filteredPosts = _selectedCategory == 'TÜM'
-      ? _posts
-      : _posts.where((post) => post['category'] == _selectedCategory).toList();
+  @override
+  Widget build(BuildContext context) {
+    final filteredPosts = _selectedCategory == 'TÜM'
+        ? _posts
+        : _posts.where((post) => post['category'] == _selectedCategory).toList();
 
-  final List<Widget> _screens = [
-    _isLoading
-        ? const Center(child: CircularProgressIndicator(color: primaryRed))
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 50,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) =>
-                      _buildCategoryButton(_categories[index]),
+    final List<Widget> _screens = [
+      _isLoading
+          ? const Center(child: CircularProgressIndicator(color: primaryRed))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 50,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) =>
+                        _buildCategoryButton(_categories[index]),
+                  ),
                 ),
-              ),
-              const Divider(),
-              Expanded(
-                child: filteredPosts.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Henüz gönderi yok.',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 16,
-                            color: Colors.grey,
+                const Divider(),
+                Expanded(
+                  child: filteredPosts.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Henüz gönderi yok.',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
                           ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredPosts.length,
+                          itemBuilder: (context, index) =>
+                              _buildPostCard(filteredPosts[index], index),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredPosts.length,
-                        itemBuilder: (context, index) =>
-                            _buildPostCard(filteredPosts[index], index),
-                      ),
-              ),
-            ],
-          ),
-    const CreatePostScreen(), 
-    const SearchScreen(),
-    ProfileScreen(isCurrentUser: true, favoritePosts: _favoritePosts),
-  ];
+                ),
+              ],
+            ),
+      const CreatePostScreen(), 
+      const SearchScreen(),
+      ProfileScreen(isCurrentUser: true),
+    ];
 
-  return Scaffold(
-    appBar: _buildAppBar(),
-    body: _screens[_selectedIndex],
-    bottomNavigationBar: BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      selectedItemColor: primaryRed,
-      unselectedItemColor: Colors.grey,
-      onTap: _onItemTapped,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Sayfa'),
-        BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Paylaş'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Ara'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-      ],
-    ),
-  );
-}
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: primaryRed,
+        unselectedItemColor: Colors.grey,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Sayfa'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Paylaş'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Ara'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        ],
+      ),
+    );
+  }
 
   AppBar _buildAppBar() {
     if (_selectedIndex == 3) {
