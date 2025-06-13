@@ -82,38 +82,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
-    if (index == 1) {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CreatePostScreen()),
-      );
-
-      if (result != null && result is Map) {
-        setState(() {
-          _posts.insert(0, {
-            'username': 'Sen',
-            'product': result['product'] ?? '',
-            'content': result['review'] ?? '',
-            'category': result['category'] ?? 'Makyaj',
-            'showCommentField': false,
-            'comments': [],
-            'rating': result['rating'] ?? 0,
-            'brand': result['brand'] ?? '',
-            'productPhoto': result['productPhoto'] ?? '',
-          });
-          _selectedIndex = 0;
-          _selectedCategory = result['category'] ?? 'TÜM';
-        });
-      }
-    } else if (index == 3) {
-      setState(() {
-        _selectedIndex = index;
-      });
-    } else {
-      setState(() {
-        _selectedIndex = index;
-      });
-    }
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   Widget _buildCategoryButton(String title) {

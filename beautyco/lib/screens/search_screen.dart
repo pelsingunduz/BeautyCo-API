@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import 'product_detail_screen.dart'; 
 import 'create_post.dart';
 import 'home_page.dart';
+import '../theme.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -248,7 +249,7 @@ class SearchScreenState extends State<SearchScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _navigateToHome, // ✅ DÜZELTME: _navigateBack yerine _navigateToHome
+          onPressed: _navigateToHome,
         ),
         actions: [
           if (allProducts.isNotEmpty)

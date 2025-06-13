@@ -359,7 +359,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ),
         child: _buildBody(),
       ),
-      // Tab bar kaldırıldı - artık home page'deki tab bar kullanılacak
     );
   }
 
