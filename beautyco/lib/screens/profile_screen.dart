@@ -3,12 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
 import 'edit_profile_screen.dart';
+import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
   final bool isCurrentUser;
   final List<Map<String, dynamic>>? favoritePosts;
-  
+
   const ProfileScreen({
     super.key,
     this.userId,
@@ -20,16 +21,17 @@ class ProfileScreen extends StatefulWidget {
   ProfileScreenState createState() => ProfileScreenState();
 }
 
-class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
+class ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ApiService _apiService = ApiService();
-  
+
   User? userData;
   List<dynamic> userReviews = [];
   List<dynamic> userFavorites = [];
   List<dynamic> followers = [];
   List<dynamic> following = [];
-  
+
   bool isLoading = true;
   bool isFollowersLoading = false;
   bool isFollowingLoading = false;
@@ -41,7 +43,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    debugPrint('ProfileScreen initState - userId: ${widget.userId}, isCurrentUser: ${widget.isCurrentUser}');
+    debugPrint(
+      'ProfileScreen initState - userId: ${widget.userId}, isCurrentUser: ${widget.isCurrentUser}',
+    );
     _initializeProfile();
   }
 
@@ -49,7 +53,8 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   void didUpdateWidget(ProfileScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Widget parametreleri değiştiğinde profili yeniden yükle
-    if (oldWidget.userId != widget.userId || oldWidget.isCurrentUser != widget.isCurrentUser) {
+    if (oldWidget.userId != widget.userId ||
+        oldWidget.isCurrentUser != widget.isCurrentUser) {
       debugPrint('ProfileScreen didUpdateWidget - Reloading profile');
       _initializeProfile();
     }
@@ -78,10 +83,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
       // Önce current user ID'sini al
       await _loadCurrentUserId();
-      
+
       // Sonra profil verilerini yükle
       await _loadProfile();
-      
     } catch (e) {
       debugPrint('Profile initialization error: $e');
       setState(() {
@@ -96,7 +100,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       // Her seferinde fresh current user ID al
       currentUserId = await _apiService.getCurrentUserId();
       debugPrint('✅ Current user ID loaded: $currentUserId');
-      
+
       if (currentUserId == null) {
         throw Exception('Kullanıcı oturumu bulunamadı');
       }
@@ -109,13 +113,14 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   Future<void> _loadProfile() async {
     try {
       String? targetUserId;
-      
+
       // Hangi kullanıcının profilini yükleyeceğimizi belirle
       if (widget.userId != null && widget.userId!.isNotEmpty) {
         // Belirli bir kullanıcının profili
         targetUserId = widget.userId!;
         debugPrint('📋 Loading specific user profile: $targetUserId');
-      } else if (widget.isCurrentUser || (widget.userId == null || widget.userId!.isEmpty)) {
+      } else if (widget.isCurrentUser ||
+          (widget.userId == null || widget.userId!.isEmpty)) {
         // Current user'ın profili
         targetUserId = currentUserId;
         debugPrint('👤 Loading current user profile: $targetUserId');
@@ -130,33 +135,36 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       }
 
       debugPrint('🔄 Loading profile for user ID: $targetUserId');
-      
+
       // Kullanıcı profilini yükle - her seferinde fresh data al
       userData = await _apiService.getUserProfile(targetUserId);
-      debugPrint('✅ User data loaded: ${userData?.name} (${userData?.email}) - ID: ${userData?.id}');
-      
+      debugPrint(
+        '✅ User data loaded: ${userData?.name} (${userData?.email}) - ID: ${userData?.id}',
+      );
+
       // Takip durumunu kontrol et (eğer başka birinin profili ise)
       if (!_isCurrentUserProfile && currentUserId != null) {
         await _checkFollowStatus(targetUserId);
         debugPrint('📊 Follow status checked: $isFollowing');
       }
-      
+
       // Takipçi ve takip edilen listelerini yükle
       await _loadFollowData(targetUserId);
-      debugPrint('👥 Follow data loaded - Followers: ${followers.length}, Following: ${following.length}');
-      
+      debugPrint(
+        '👥 Follow data loaded - Followers: ${followers.length}, Following: ${following.length}',
+      );
+
       // Favorileri yükle (sadece kendi profilimiz ise)
       if (_isCurrentUserProfile) {
         await _loadFavorites();
         debugPrint('❤️ Favorites loaded: ${userFavorites.length}');
       }
-      
+
       setState(() {
         isLoading = false;
       });
-      
+
       debugPrint('🎉 Profile loading completed successfully');
-      
     } catch (e) {
       debugPrint('❌ Profile loading error: $e');
       setState(() {
@@ -169,7 +177,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   Future<void> _checkFollowStatus(String targetUserId) async {
     try {
       final followingList = await _apiService.getFollowing(currentUserId!);
-      isFollowing = followingList.any((user) => user['id'].toString() == targetUserId);
+      isFollowing = followingList.any(
+        (user) => user['id'].toString() == targetUserId,
+      );
       debugPrint('Follow status for $targetUserId: $isFollowing');
     } catch (e) {
       debugPrint('Follow status check error: $e');
@@ -180,7 +190,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     try {
       final followersData = await _apiService.getFollowers(userId);
       final followingData = await _apiService.getFollowing(userId);
-      
+
       setState(() {
         followers = followersData;
         following = followingData;
@@ -202,28 +212,30 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   Future<void> _toggleFollow() async {
     if (userData == null || currentUserId == null) return;
-    
+
     try {
       final targetUserId = userData!.id.toString();
-      
+
       Map<String, dynamic> result;
       if (isFollowing) {
         result = await _apiService.unfollowUser(targetUserId);
       } else {
         result = await _apiService.followUser(targetUserId);
       }
-      
+
       if (result['success']) {
         setState(() {
           isFollowing = !isFollowing;
         });
-        
+
         await _loadFollowData(targetUserId);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(isFollowing ? 'Takip edildi' : 'Takipten çıkarıldı'),
+              content: Text(
+                isFollowing ? 'Takip edildi' : 'Takipten çıkarıldı',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -241,10 +253,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -253,10 +262,10 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   Future<void> _toggleFavorite(int productId) async {
     try {
       final result = await _apiService.removeFavorite(productId);
-      
+
       if (result['success']) {
         await _loadFavorites();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -278,10 +287,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -289,12 +295,16 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   bool get _isCurrentUserProfile {
     if (userData == null || currentUserId == null) {
-      debugPrint('⚠️ Cannot determine if current user profile - userData: ${userData != null}, currentUserId: ${currentUserId != null}');
+      debugPrint(
+        '⚠️ Cannot determine if current user profile - userData: ${userData != null}, currentUserId: ${currentUserId != null}',
+      );
       return widget.isCurrentUser;
     }
-    
+
     final isCurrentUser = userData!.id.toString() == currentUserId;
-    debugPrint('🔍 Is current user profile: $isCurrentUser (userData.id: ${userData!.id}, currentUserId: $currentUserId)');
+    debugPrint(
+      '🔍 Is current user profile: $isCurrentUser (userData.id: ${userData!.id}, currentUserId: $currentUserId)',
+    );
     return isCurrentUser;
   }
 
@@ -303,24 +313,24 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     return isLoading
         ? const Center(child: CircularProgressIndicator(color: Colors.pink))
         : errorMessage != null
-              ? _buildErrorState()
-              : userData == null
-                  ? _buildNoDataState()
-                  : RefreshIndicator(
-                      onRefresh: _initializeProfile,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildProfileHeader(),
-                            _buildProfileStats(),
-                            _buildBio(),
-                            _buildTabs(),
-                          ],
-                        ),
-                      ),
-                    );
+        ? _buildErrorState()
+        : userData == null
+        ? _buildNoDataState()
+        : RefreshIndicator(
+          onRefresh: _initializeProfile,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfileHeader(),
+                _buildProfileStats(),
+                _buildBio(),
+                _buildTabs(),
+              ],
+            ),
+          ),
+        );
   }
 
   Widget _buildNoDataState() {
@@ -358,11 +368,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
             'Profil yüklenemedi',
@@ -384,9 +390,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             child: Text(
               errorMessage!,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.red[700],
-              ),
+              style: TextStyle(color: Colors.red[700]),
             ),
           ),
           const SizedBox(height: 16),
@@ -405,9 +409,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   Widget _buildProfileHeader() {
     if (userData == null) return const SizedBox();
-    
+
     final isCurrentUser = _isCurrentUserProfile;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
@@ -417,23 +421,22 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.pink.shade100,
-                width: 2,
-              ),
-              image: userData!.profilePhoto != null
-                  ? DecorationImage(
-                      image: NetworkImage(userData!.profilePhoto!),
-                      fit: BoxFit.cover,
-                      onError: (error, stackTrace) {
-                        debugPrint('Profile photo load error: $error');
-                      },
-                    )
-                  : null,
+              border: Border.all(color: Colors.pink.shade100, width: 2),
+              image:
+                  userData!.profilePhoto != null
+                      ? DecorationImage(
+                        image: NetworkImage(userData!.profilePhoto!),
+                        fit: BoxFit.cover,
+                        onError: (error, stackTrace) {
+                          debugPrint('Profile photo load error: $error');
+                        },
+                      )
+                      : null,
             ),
-            child: userData!.profilePhoto == null 
-                ? const Icon(Icons.person, size: 50, color: Colors.pink) 
-                : null,
+            child:
+                userData!.profilePhoto == null
+                    ? const Icon(Icons.person, size: 50, color: Colors.pink)
+                    : null,
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -459,34 +462,47 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: isCurrentUser 
-                      ? () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditProfileScreen(
-                                userId: userData!.id.toString(),
-                                currentName: userData!.name,
-                                currentProfilePhoto: userData!.profilePhoto,
+                  onTap:
+                      isCurrentUser
+                          ? () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => EditProfileScreen(
+                                      userId: userData!.id.toString(),
+                                      currentName: userData!.name,
+                                      currentProfilePhoto:
+                                          userData!.profilePhoto,
+                                    ),
                               ),
-                            ),
-                          );
-                          
-                          if (result == true) {
-                            _initializeProfile();
+                            );
+
+                            if (result == true) {
+                              _initializeProfile();
+                            }
                           }
-                        }
-                      : _toggleFollow,
+                          : _toggleFollow,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: isCurrentUser ? Colors.pink : isFollowing ? Colors.grey : Colors.pink,
+                      color:
+                          isCurrentUser
+                              ? Colors.pink
+                              : isFollowing
+                              ? Colors.grey
+                              : Colors.pink,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      isCurrentUser 
+                      isCurrentUser
                           ? 'Profili Düzenle'
-                          : isFollowing ? 'Takipten Çık' : 'Takip Et',
+                          : isFollowing
+                          ? 'Takipten Çık'
+                          : 'Takip Et',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -548,10 +564,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontFamily: 'Montserrat',
-          ),
+          style: const TextStyle(color: Colors.grey, fontFamily: 'Montserrat'),
         ),
       ],
     );
@@ -569,10 +582,10 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   Widget _buildBio() {
     if (userData?.createdAt == null) return const SizedBox();
-    
+
     final createdAt = userData!.createdAt!;
     final joinDate = '${createdAt.day}/${createdAt.month}/${createdAt.year}';
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -614,22 +627,14 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           labelColor: Colors.pink,
           unselectedLabelColor: Colors.grey,
           indicatorColor: Colors.pink,
-          labelStyle: const TextStyle(
-            fontFamily: 'Montserrat',
-          ),
-          tabs: const [
-            Tab(text: 'İncelemeler'),
-            Tab(text: 'Favoriler'),
-          ],
+          labelStyle: const TextStyle(fontFamily: 'Montserrat'),
+          tabs: const [Tab(text: 'İncelemeler'), Tab(text: 'Favoriler')],
         ),
         SizedBox(
           height: 400,
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildReviewsTab(),
-              _buildFavoritesTab(),
-            ],
+            children: [_buildReviewsTab(), _buildFavoritesTab()],
           ),
         ),
       ],
@@ -638,16 +643,22 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   Widget _buildReviewsTab() {
     final reviews = userData?.reviews ?? [];
-    
+
     if (reviews.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.rate_review_outlined, size: 64, color: Colors.grey),
+            const Icon(
+              Icons.rate_review_outlined,
+              size: 64,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 16),
             Text(
-              _isCurrentUserProfile ? 'Henüz inceleme yapmadınız' : 'Henüz inceleme yapmış',
+              _isCurrentUserProfile
+                  ? 'Henüz inceleme yapmadınız'
+                  : 'Henüz inceleme yapmış',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -658,7 +669,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.only(top: 12),
       itemCount: reviews.length,
@@ -682,7 +693,9 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             const Icon(Icons.favorite_border, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              _isCurrentUserProfile ? 'Henüz favori ürününüz yok' : 'Henüz favori ürünü yok',
+              _isCurrentUserProfile
+                  ? 'Henüz favori ürününüz yok'
+                  : 'Henüz favori ürünü yok',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -714,119 +727,106 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   }
 
   Widget _buildReviewItem(Review review) {
-    debugPrint('➡️ _buildReviewItem oluşturulan review: $review');
-    final reviewDate = review.createdAt;
-    final formattedDate = '${reviewDate.day}/${reviewDate.month}/${reviewDate.year}';
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (review.product?.productPhoto != null && review.product!.productPhoto!.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      review.product!.productPhoto!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 50,
-                          height: 50,
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image, color: Colors.grey),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        review.product?.name ?? 'Ürün Adı',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      if (review.product?.brand != null && review.product!.brand!.isNotEmpty)
-                        Text(
-                          review.product!.brand!,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontFamily: 'Montserrat',
+    final formattedDate = DateFormat('dd.MM.yyyy').format(review.createdAt);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            review.product?.name ?? 'Ürün Adı',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontFamily: 'Montserrat',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            review.content,
+            style: const TextStyle(fontSize: 14, fontFamily: 'Montserrat'),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formattedDate,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+              if (_isCurrentUserProfile)
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder:
+                          (_) => AlertDialog(
+                            title: const Text('İncelemeyi Sil'),
+                            content: const Text(
+                              'Bu incelemeyi silmek istediğinize emin misiniz?',
+                            ),
+                            actions: [
+                              TextButton(
+                                child: const Text('İptal'),
+                                onPressed: () => Navigator.pop(context, false),
+                              ),
+                              TextButton(
+                                child: const Text('Sil'),
+                                onPressed: () => Navigator.pop(context, true),
+                              ),
+                            ],
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: List.generate(5, (index) {
-                    return Icon(
-                      index < review.rating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 16,
                     );
-                  }),
+
+                      if (confirm == true) {
+                      try {
+                        await _apiService.deleteReview(review.id);
+                        
+                        // Sadece user profile'ı yeniden yükle
+                        if (userData != null) {
+                          final updatedUserData = await _apiService.getUserProfile(userData!.id.toString());
+                          setState(() {
+                            userData = updatedUserData;
+                          });
+                        }
+                        
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('İnceleme silindi'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Silme hatası: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Açıklama:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Montserrat',
-                    color: Colors.pink,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.pink.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    review.content.isNotEmpty
-                        ? review.content
-                        : 'İnceleme içeriği bulunamadı.',
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formattedDate,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontFamily: 'Montserrat',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -884,12 +884,16 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
               ),
           ],
         ),
-        trailing: _isCurrentUserProfile 
-            ? IconButton(
-                icon: const Icon(Icons.favorite, color: Colors.pink),
-                onPressed: () => _toggleFavorite(favorite['product_id'] ?? favorite['id']),
-              )
-            : null,
+        trailing:
+            _isCurrentUserProfile
+                ? IconButton(
+                  icon: const Icon(Icons.favorite, color: Colors.pink),
+                  onPressed:
+                      () => _toggleFavorite(
+                        favorite['product_id'] ?? favorite['id'],
+                      ),
+                )
+                : null,
       ),
     );
   }
@@ -903,26 +907,29 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           content: SizedBox(
             width: double.maxFinite,
             height: 300,
-            child: followers.isEmpty
-                ? const Center(child: Text('Henüz takipçi yok'))
-                : ListView.builder(
-                    itemCount: followers.length,
-                    itemBuilder: (context, index) {
-                      final follower = followers[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: follower['profile_photo'] != null
-                              ? NetworkImage(follower['profile_photo'])
-                              : null,
-                          child: follower['profile_photo'] == null
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(follower['name'] ?? 'İsimsiz'),
-                        subtitle: Text(follower['email'] ?? ''),
-                      );
-                    },
-                  ),
+            child:
+                followers.isEmpty
+                    ? const Center(child: Text('Henüz takipçi yok'))
+                    : ListView.builder(
+                      itemCount: followers.length,
+                      itemBuilder: (context, index) {
+                        final follower = followers[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                follower['profile_photo'] != null
+                                    ? NetworkImage(follower['profile_photo'])
+                                    : null,
+                            child:
+                                follower['profile_photo'] == null
+                                    ? const Icon(Icons.person)
+                                    : null,
+                          ),
+                          title: Text(follower['name'] ?? 'İsimsiz'),
+                          subtitle: Text(follower['email'] ?? ''),
+                        );
+                      },
+                    ),
           ),
           actions: [
             TextButton(
@@ -944,26 +951,31 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           content: SizedBox(
             width: double.maxFinite,
             height: 300,
-            child: following.isEmpty
-                ? const Center(child: Text('Henüz kimseyi takip etmiyor'))
-                : ListView.builder(
-                    itemCount: following.length,
-                    itemBuilder: (context, index) {
-                      final followedUser = following[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: followedUser['profile_photo'] != null
-                              ? NetworkImage(followedUser['profile_photo'])
-                              : null,
-                          child: followedUser['profile_photo'] == null
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(followedUser['name'] ?? 'İsimsiz'),
-                        subtitle: Text(followedUser['email'] ?? ''),
-                      );
-                    },
-                  ),
+            child:
+                following.isEmpty
+                    ? const Center(child: Text('Henüz kimseyi takip etmiyor'))
+                    : ListView.builder(
+                      itemCount: following.length,
+                      itemBuilder: (context, index) {
+                        final followedUser = following[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                followedUser['profile_photo'] != null
+                                    ? NetworkImage(
+                                      followedUser['profile_photo'],
+                                    )
+                                    : null,
+                            child:
+                                followedUser['profile_photo'] == null
+                                    ? const Icon(Icons.person)
+                                    : null,
+                          ),
+                          title: Text(followedUser['name'] ?? 'İsimsiz'),
+                          subtitle: Text(followedUser['email'] ?? ''),
+                        );
+                      },
+                    ),
           ),
           actions: [
             TextButton(
@@ -978,7 +990,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   void _showReviewsDialog() {
     final reviews = userData?.reviews ?? [];
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -987,15 +999,16 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
-            child: reviews.isEmpty
-                ? const Center(child: Text('Henüz inceleme yok'))
-                : ListView.builder(
-                    itemCount: reviews.length,
-                    itemBuilder: (context, index) {
-                      final review = reviews[index];
-                      return _buildReviewItem(review);
-                    },
-                  ),
+            child:
+                reviews.isEmpty
+                    ? const Center(child: Text('Henüz inceleme yok'))
+                    : ListView.builder(
+                      itemCount: reviews.length,
+                      itemBuilder: (context, index) {
+                        final review = reviews[index];
+                        return _buildReviewItem(review);
+                      },
+                    ),
           ),
           actions: [
             TextButton(
