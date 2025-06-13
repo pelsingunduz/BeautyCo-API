@@ -25,6 +25,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _isSubmitting = false;
   bool _isAuthError = false; // Kimlik doğrulama hatası durumu
   final ApiService _apiService = ApiService();
+  int _selectedIndex = 1; // Tab bar için seçili index
 
   List<String> _categories = ['Makyaj', 'Cilt Bakımı', 'Saç', 'Parfüm']; // Default categories
 
@@ -290,6 +291,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
+  void _onItemTapped(int index) {
+    if (index != _selectedIndex) {
+      switch (index) {
+        case 0:
+          Navigator.pushReplacementNamed(context, '/home');
+          break;
+        case 1:
+          // Zaten create post ekranındayız
+          break;
+        case 2:
+          Navigator.pushReplacementNamed(context, '/search');
+          break;
+        case 3:
+          Navigator.pushReplacementNamed(context, '/profile');
+          break;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -358,6 +378,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         ),
         child: _buildBody(),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: primaryRed,
+        unselectedItemColor: Colors.grey,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Sayfa'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Paylaş'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Ara'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        ],
       ),
     );
   }
