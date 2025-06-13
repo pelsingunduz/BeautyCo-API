@@ -791,25 +791,36 @@ class ProfileScreenState extends State<ProfileScreen>
                           ),
                     );
 
-                      if (confirm == true) {
+                    if (confirm == true) {
                       try {
-                        await _apiService.deleteReview(review.id);
+                        final result = await _apiService.deleteReview(review.id);
                         
-                        // Sadece user profile'ı yeniden yükle
-                        if (userData != null) {
-                          final updatedUserData = await _apiService.getUserProfile(userData!.id.toString());
-                          setState(() {
-                            userData = updatedUserData;
-                          });
-                        }
-                        
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('İnceleme silindi'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                        if (result['success'] == true) {
+                          // Sadece user profile'ı yeniden yükle
+                          if (userData != null) {
+                            final updatedUserData = await _apiService.getUserProfile(userData!.id.toString());
+                            setState(() {
+                              userData = updatedUserData;
+                            });
+                          }
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('İnceleme silindi'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } else {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result['message'] ?? 'Silme işlemi başarısız'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       } catch (e) {
                         if (mounted) {
