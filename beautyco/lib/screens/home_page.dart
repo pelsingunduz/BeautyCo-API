@@ -50,9 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final fetchedFavorites = await _apiService.getFavorites();
       setState(() {
-        _favoritedProductIds = fetchedFavorites
-            .map<int>((fav) => fav['product_id'] as int)
-            .toSet();
+        _favoritedProductIds =
+            fetchedFavorites
+                .map<int>((fav) => fav['product_id'] as int)
+                .toSet();
       });
     } catch (e) {
       debugPrint('Favori ürünleri çekerken hata: $e');
@@ -66,20 +67,21 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final fetchedPosts = await _apiService.getFeedPosts();
       setState(() {
-        _posts = fetchedPosts.map<Map<String, dynamic>>((post) {
-          return {
-            'username': post['username'] ?? 'Bilinmeyen Kullanıcı',
-            'product': post['product_name'] ?? 'Ürün Adı',
-            'content': post['content'] ?? 'İnceleme metni yok.',
-            'category': post['category_name'] ?? 'Genel',
-            'showCommentField': false,
-            'comments': [],
-            'rating': post['rating'] ?? 0.0,
-            'brand': post['brand'] ?? 'Marka Yok',
-            'productPhoto': post['product_photo'] ?? '',
-            'product_id': post['product_id'],
-          };
-        }).toList();
+        _posts =
+            fetchedPosts.map<Map<String, dynamic>>((post) {
+              return {
+                'username': post['username'] ?? 'Bilinmeyen Kullanıcı',
+                'product': post['product_name'] ?? 'Ürün Adı',
+                'content': post['content'] ?? 'İnceleme metni yok.',
+                'category': post['category_name'] ?? 'Genel',
+                'showCommentField': false,
+                'comments': [],
+                'rating': post['rating'] ?? 0.0,
+                'brand': post['brand'] ?? 'Marka Yok',
+                'productPhoto': post['product_photo'] ?? '',
+                'product_id': post['product_id'],
+              };
+            }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -97,36 +99,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
-  if (index == 1) {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreatePostScreen()),
-    );
+    if (index == 1) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+      );
 
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() {
-        _posts.insert(0, {
-          'username': result['username'] ?? 'Sen',
-          'product': result['product'],
-          'content': result['review'],
-          'category': result['category'],
-          'rating': result['rating'],
-          'brand': result['brand'],
-          'productPhoto': result['productPhoto'],
-          'comments': [],
-          'showCommentField': false,
-          'product_id': null,
+      if (result != null && result is Map<String, dynamic>) {
+        setState(() {
+          _posts.insert(0, {
+            'username': result['username'] ?? 'Sen',
+            'product': result['product'],
+            'content': result['review'],
+            'category': result['category'],
+            'rating': result['rating'],
+            'brand': result['brand'],
+            'productPhoto': result['productPhoto'],
+            'comments': [],
+            'showCommentField': false,
+            'product_id': null,
+          });
+          _selectedCategory = 'TÜM';
+          _selectedIndex = 0;
         });
-        _selectedCategory = 'TÜM';
-        _selectedIndex = 0;
+      }
+    } else {
+      setState(() {
+        _selectedIndex = index;
       });
     }
-  } else {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
-}
 
   Widget _buildCategoryButton(String title) {
     final bool isSelected = _selectedCategory == title;
@@ -138,17 +140,27 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ), // ↑ vertical 8 → 10 yapıldı
         decoration: BoxDecoration(
           color: isSelected ? primaryRed : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? primaryRed : roseGold, width: 1),
+          border: Border.all(
+            color: isSelected ? primaryRed : roseGold,
+            width: 1,
+          ),
         ),
-        child: Text(
-          title,
-          style: GoogleFonts.montserrat(
-            color: isSelected ? Colors.white : primaryRed,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        child: Center(
+          // ← BU ÖNEMLİ
+          child: Text(
+            title,
+            style: GoogleFonts.montserrat(
+              color: isSelected ? Colors.white : primaryRed,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 14, // isteğe göre küçültüp büyütebilirsin
+            ),
           ),
         ),
       ),
@@ -163,7 +175,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Card(
           elevation: 4,
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -179,10 +193,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(
                             post['username'] ?? 'Anonim',
-                            style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                            style: GoogleFonts.montserrat(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
-                            '${post['brand'] ?? ''} - ${post['product'] ?? 'Ürün Adı' }',
+                            '${post['brand'] ?? ''} - ${post['product'] ?? 'Ürün Adı'}',
                             style: GoogleFonts.montserrat(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -210,7 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        productId != null && _favoritedProductIds.contains(productId)
+                        productId != null &&
+                                _favoritedProductIds.contains(productId)
                             ? Icons.favorite
                             : Icons.favorite_border,
                         color: Colors.pink,
@@ -250,7 +267,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           debugPrint('Favori işlemi hatası: $e');
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Favori işlemi sırasında hata oluştu: $e'),
+                              content: Text(
+                                'Favori işlemi sırasında hata oluştu: $e',
+                              ),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -260,7 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                if (post['productPhoto'] != null && post['productPhoto'].isNotEmpty)
+                if (post['productPhoto'] != null &&
+                    post['productPhoto'].isNotEmpty)
                   Container(
                     height: 200,
                     decoration: BoxDecoration(
@@ -278,7 +298,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     height: 200,
                     color: Colors.grey[200],
-                    child: const Center(child: Icon(Icons.photo, size: 50, color: Colors.grey)),
+                    child: const Center(
+                      child: Icon(Icons.photo, size: 50, color: Colors.grey),
+                    ),
                   ),
                 const SizedBox(height: 10),
                 Text(
@@ -291,12 +313,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'Kategori: ${post['category'] ?? 'Belirtilmemiş'}',
-                      style: GoogleFonts.montserrat(color: Colors.grey[600], fontSize: 12),
+                      style: GoogleFonts.montserrat(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
                         setState(() {
-                          _posts[index]['showCommentField'] = !post['showCommentField'];
+                          _posts[index]['showCommentField'] =
+                              !post['showCommentField'];
                           if (!post['showCommentField']) {
                             _commentController.clear();
                           }
@@ -317,7 +343,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         controller: _commentController,
                         decoration: InputDecoration(
                           hintText: 'Yorumunuzu yazın...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           contentPadding: const EdgeInsets.all(8),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.send, color: primaryRed),
@@ -340,41 +368,52 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      if (post['comments'] != null && post['comments'].isNotEmpty)
+                      if (post['comments'] != null &&
+                          post['comments'].isNotEmpty)
                         Column(
                           children: [
                             const Divider(),
-                            ...post['comments'].map<Widget>((comment) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const CircleAvatar(
-                                    radius: 12,
-                                    child: Icon(Icons.person, size: 16),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                            ...post['comments']
+                                .map<Widget>(
+                                  (comment) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          comment['username'],
-                                          style: GoogleFonts.montserrat(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
+                                        const CircleAvatar(
+                                          radius: 12,
+                                          child: Icon(Icons.person, size: 16),
                                         ),
-                                        Text(
-                                          comment['content'],
-                                          style: GoogleFonts.montserrat(fontSize: 12),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                comment['username'],
+                                                style: GoogleFonts.montserrat(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              Text(
+                                                comment['content'],
+                                                style: GoogleFonts.montserrat(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            )).toList(),
+                                )
+                                .toList(),
                           ],
                         ),
                     ],
@@ -389,30 +428,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredPosts = _selectedCategory == 'TÜM'
-        ? _posts
-        : _posts.where((post) => post['category'] == _selectedCategory).toList();
+    final filteredPosts =
+        _selectedCategory == 'TÜM'
+            ? _posts
+            : _posts
+                .where((post) => post['category'] == _selectedCategory)
+                .toList();
 
     final List<Widget> _screens = [
       _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryRed))
           : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) =>
-                        _buildCategoryButton(_categories[index]),
-                  ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12), // ← AppBar ile kategori arası boşluk
+              SizedBox(
+                height: 50,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: _categories.length,
+                  itemBuilder:
+                      (context, index) =>
+                          _buildCategoryButton(_categories[index]),
                 ),
-                const Divider(),
-                Expanded(
-                  child: filteredPosts.isEmpty
-                      ? Center(
+              ),
+              const Divider(),
+              Expanded(
+                child:
+                    filteredPosts.isEmpty
+                        ? Center(
                           child: Text(
                             'Henüz gönderi yok.',
                             style: GoogleFonts.montserrat(
@@ -421,15 +466,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         )
-                      : ListView.builder(
+                        : ListView.builder(
                           itemCount: filteredPosts.length,
-                          itemBuilder: (context, index) =>
-                              _buildPostCard(filteredPosts[index], index),
+                          itemBuilder:
+                              (context, index) =>
+                                  _buildPostCard(filteredPosts[index], index),
                         ),
-                ),
-              ],
-            ),
-      const CreatePostScreen(), 
+              ),
+            ],
+          ),
+      const CreatePostScreen(),
       const SearchScreen(),
       ProfileScreen(isCurrentUser: true),
     ];
@@ -455,33 +501,47 @@ class _HomeScreenState extends State<HomeScreen> {
   AppBar _buildAppBar() {
     if (_selectedIndex == 3) {
       return AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: champagneGold,
         elevation: 0,
-        title: const Text(
-          'Profil',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Montserrat',
+        centerTitle: false,
+        toolbarHeight: 60,
+        title: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Text(
+            'Profil',
+            style: TextStyle(
+              color: primaryRed,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              fontFamily: 'Montserrat',
+            ),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.black),
+            icon: const Icon(Icons.settings_outlined, color: primaryRed),
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(0.5), // AppBar'a minimum etki
+          child: Divider(
+            height: 0.5, // Daha yukarı yerleşsin
+            thickness: 1,
+            color: Colors.black12,
+          ),
+        ),
       );
     } else {
       return AppBar(
         backgroundColor: primaryRed,
+        centerTitle: true,
         title: Text(
           'BeautyCo',
           style: GoogleFonts.pacifico(color: Colors.white),
         ),
-        centerTitle: true,
       );
     }
   }

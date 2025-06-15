@@ -27,7 +27,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final ApiService _apiService = ApiService();
   int _selectedIndex = 1; // Tab bar için seçili index
 
-  List<String> _categories = ['Makyaj', 'Cilt Bakımı', 'Saç', 'Parfüm']; // Default categories
+  List<String> _categories = [
+    'Makyaj',
+    'Cilt Bakımı',
+    'Saç',
+    'Parfüm',
+  ]; // Default categories
 
   List<Product> _products = [];
   List<Product> _filteredProducts = [];
@@ -43,12 +48,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _initializeApiAndLoadData() async {
     try {
       // API servisini başlat (token varsa yükle)
-      ApiService.init();  
-      
+      ApiService.init();
+
       // Login durumunu kontrol et - token kontrolü için alternatif yöntemler:
       // ApiService'deki isLoggedIn getter'ını kullan
-      bool isLoggedIn = ApiService.isLoggedIn; 
-      
+      bool isLoggedIn = ApiService.isLoggedIn;
+
       if (!isLoggedIn) {
         if (mounted) {
           setState(() {
@@ -64,7 +69,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         }
         return;
       }
-      
+
       // Verileri yükle
       await _loadData();
     } catch (e) {
@@ -85,7 +90,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   Future<void> _loadData() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _isAuthError = false;
@@ -93,11 +98,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     try {
       print('Loading categories and products...');
-      
+
       // Kategori ve ürün verilerini veritabanından çek
       final categoriesResponse = await _apiService.getCategories();
       final productsResponse = await _apiService.getProducts();
-      
+
       // Debug çıktıları
       print('Categories received: ${categoriesResponse.length}');
       print('Categories data: $categoriesResponse');
@@ -109,25 +114,31 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
       setState(() {
         _categoryList = List<Map<String, dynamic>>.from(categoriesResponse);
-        
+
         // Ürünleri Product modeline dönüştür - null kontrollü
-        _products = productsResponse.map<Product?>((productData) {
-          try {
-            return Product.fromJson(productData);
-          } catch (e) {
-            print('Error parsing product: $productData');
-            print('Error: $e');
-            // Hatalı ürünü atla ve null döndür
-            return null;
-          }
-        }).where((product) => product != null).cast<Product>().toList();
+        _products =
+            productsResponse
+                .map<Product?>((productData) {
+                  try {
+                    return Product.fromJson(productData);
+                  } catch (e) {
+                    print('Error parsing product: $productData');
+                    print('Error: $e');
+                    // Hatalı ürünü atla ve null döndür
+                    return null;
+                  }
+                })
+                .where((product) => product != null)
+                .cast<Product>()
+                .toList();
 
         // Veritabanı entegrasyonu sonrası kategori listesini güncelle
         if (_categoryList.isNotEmpty) {
-          _categories = _categoryList.map<String>((category) {
-            return category['name']?.toString() ?? 'Bilinmeyen';
-          }).toList();
-          
+          _categories =
+              _categoryList.map<String>((category) {
+                return category['name']?.toString() ?? 'Bilinmeyen';
+              }).toList();
+
           // İlk kategoriyi default olarak seç
           if (_categories.isNotEmpty) {
             _selectedCategory = _categories.first;
@@ -136,30 +147,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
         _filteredProducts = List.from(_products);
         _isLoading = false;
-        
+
         print('Final products count: ${_products.length}');
         print('Final categories count: ${_categories.length}');
       });
     } catch (e) {
       print('Load data error: $e');
       print('API Service last error: ${ApiService.lastError}');
-      
+
       // mounted kontrolü ekleyelim
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
-        if (e.toString().contains('Authentication required') || 
+        if (e.toString().contains('Authentication required') ||
             e.toString().contains('401')) {
           _isAuthError = true;
         }
       });
-      
+
       String errorMessage = 'Veri yüklenirken hata oluştu';
       if (ApiService.lastError != null) {
         errorMessage = ApiService.lastError!;
       } else {
-      errorMessage = '$errorMessage: $e';
+        errorMessage = '$errorMessage: $e';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -182,10 +193,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (query.isEmpty) {
         _filteredProducts = List.from(_products);
       } else {
-        _filteredProducts = _products.where((product) {
-          final searchString = '${product.name.toLowerCase()} ${product.brand?.toLowerCase() ?? ""} ${product.description?.toLowerCase() ?? ""}';
-          return searchString.contains(query.toLowerCase());
-        }).toList();
+        _filteredProducts =
+            _products.where((product) {
+              final searchString =
+                  '${product.name.toLowerCase()} ${product.brand?.toLowerCase() ?? ""} ${product.description?.toLowerCase() ?? ""}';
+              return searchString.contains(query.toLowerCase());
+            }).toList();
       }
     });
     print('Filtered products count: ${_filteredProducts.length}');
@@ -246,7 +259,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
 
       if (!mounted) return;
-      
+
       setState(() {
         _isSubmitting = false;
       });
@@ -258,16 +271,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Ana sayfaya dönerken gerekli verileri gönder
-              Navigator.pop(context, {
-        'product': _selectedProduct!.name,
-        'review': _reviewController.text,
-        'category': _selectedCategory,
-        'rating': _rating,
-        'brand': _selectedProduct!.brand,
-        'productPhoto': _selectedProduct!.productPhoto,
-      });
+        Navigator.pop(context, {
+          'product': _selectedProduct!.name,
+          'review': _reviewController.text,
+          'category': _selectedCategory,
+          'rating': _rating,
+          'brand': _selectedProduct!.brand,
+          'productPhoto': _selectedProduct!.productPhoto,
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -278,15 +291,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isSubmitting = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -319,9 +329,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         shadowColor: darkRed.withAlpha((0.2 * 255).toInt()),
         leading: IconButton(
           icon: Icon(
-            _selectedProduct != null ? Icons.arrow_back : Icons.close, 
-            color: primaryRed, 
-            size: 28
+            _selectedProduct != null ? Icons.arrow_back : Icons.close,
+            color: primaryRed,
+            size: 28,
           ),
           onPressed: () {
             if (_selectedProduct != null) {
@@ -337,18 +347,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           children: [
             Icon(Icons.edit_note, color: primaryRed, size: 28),
             const SizedBox(width: 8),
-            Text(
-              _selectedProduct != null ? 'İnceleme Yaz' : 'İnceleme Oluştur',
-              style: GoogleFonts.montserrat(
-                color: primaryRed,
-                fontWeight: FontWeight.w600,
-                fontSize: 22,
+            Expanded(
+              // taşmayı engeller
+              child: Text(
+                _selectedProduct != null ? 'İnceleme Yaz' : 'İnceleme Oluştur',
+                style: GoogleFonts.montserrat(
+                  color: primaryRed,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+                overflow: TextOverflow.ellipsis, // gerekiyorsa 3 nokta koyar
+                maxLines: 1,
               ),
             ),
           ],
         ),
         actions: [
-          if (_selectedProduct == null) // Sadece ürün seçili değilken search butonunu göster
+          if (_selectedProduct ==
+              null) // Sadece ürün seçili değilken search butonunu göster
             IconButton(
               icon: const Icon(Icons.search, color: Colors.black),
               onPressed: () {
@@ -404,10 +420,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             const SizedBox(height: 16),
             Text(
               'Veriler yükleniyor...',
-              style: GoogleFonts.montserrat(
-                color: primaryRed,
-                fontSize: 16,
-              ),
+              style: GoogleFonts.montserrat(color: primaryRed, fontSize: 16),
             ),
           ],
         ),
@@ -495,7 +508,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             child: Text(
               'Hangi ürünü incelemek istersiniz?',
               style: GoogleFonts.montserrat(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: primaryRed,
               ),
@@ -511,10 +524,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       controller: _searchController,
       decoration: InputDecoration(
         hintText: 'Ürün ara...',
-        hintStyle: GoogleFonts.poppins(
-          color: Colors.grey[400],
-          fontSize: 16,
-        ),
+        hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 16),
         prefixIcon: Icon(Icons.search, color: primaryRed),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
@@ -542,10 +552,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           padding: const EdgeInsets.symmetric(vertical: 30.0),
           child: Text(
             'Ürün bulunamadı',
-            style: GoogleFonts.montserrat(
-              fontSize: 16,
-              color: darkRed,
-            ),
+            style: GoogleFonts.montserrat(fontSize: 16, color: darkRed),
           ),
         ),
       );
@@ -568,14 +575,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             onTap: () {
               setState(() {
                 _selectedProduct = product;
-                
+
                 // Ürünün kategorisini seç (eğer varsa)
                 if (product.categoryId != null) {
                   final categoryObj = _categoryList.firstWhere(
                     (category) => category['id'] == product.categoryId,
                     orElse: () => {'id': 0, 'name': 'Genel'},
                   );
-                  
+
                   if (_categories.contains(categoryObj['name'])) {
                     _selectedCategory = categoryObj['name'] as String;
                   }
@@ -592,20 +599,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(product.brand ?? 'Marka bilgisi yok',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            )),
+                        Text(
+                          product.brand ?? 'Marka bilgisi yok',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(product.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            )),
+                        Text(
+                          product.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           product.categoryId != null
@@ -651,34 +662,36 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: imageUrl != null && imageUrl.isNotEmpty
-            ? Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, size: 40),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: primaryRed,
-                      strokeWidth: 2,
-                    ),
-                  );
-                },
-              )
-            : Container(
-                color: Colors.grey[200],
-                child: Icon(Icons.image, size: 40, color: Colors.grey[400]),
-              ),
+        child:
+            imageUrl != null && imageUrl.isNotEmpty
+                ? Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported, size: 40),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value:
+                            loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                        color: primaryRed,
+                        strokeWidth: 2,
+                      ),
+                    );
+                  },
+                )
+                : Container(
+                  color: Colors.grey[200],
+                  child: Icon(Icons.image, size: 40, color: Colors.grey[400]),
+                ),
       ),
     );
   }
@@ -714,7 +727,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             color: darkRed.withAlpha((0.1 * 255).toInt()),
             blurRadius: 15,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -723,14 +736,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-               crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   _selectedProduct!.brand ?? 'Marka bilgisi yok',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -742,17 +752,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _selectedProduct!.categoryId != null ? 
-                  'Kategori: ${_getCategoryName(_selectedProduct!.categoryId!)}' :
-                  'Kategori: Genel',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  _selectedProduct!.categoryId != null
+                      ? 'Kategori: ${_getCategoryName(_selectedProduct!.categoryId!)}'
+                      : 'Kategori: Genel',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -786,7 +793,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               itemBuilder: (context, index) {
                 final category = _categories[index];
                 final isSelected = _selectedCategory == category;
-                
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ChoiceChip(
@@ -805,7 +812,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       color: isSelected ? Colors.white : primaryRed,
                       fontWeight: FontWeight.w500,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 );
               },
@@ -960,6 +970,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ),
     );
   }
+
   Widget _submitButton() {
     return Container(
       width: double.infinity,
@@ -988,23 +999,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             borderRadius: BorderRadius.circular(15),
           ),
         ),
-        child: _isSubmitting
-            ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
+        child:
+            _isSubmitting
+                ? SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                : Text(
+                  'İncelemeni Paylaş',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
-              )
-            : Text(
-                'İncelemeni Paylaş',
-                style: GoogleFonts.montserrat(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
       ),
     );
   }

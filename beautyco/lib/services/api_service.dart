@@ -5,11 +5,11 @@ import '../models/user.dart';
 import 'package:flutter/foundation.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:5000';
+  static const String baseUrl = 'http://127.0.0.1:5001';
   static String? _authToken;
   static String? _lastError;
 
-    // ✅ Error getter
+  // ✅ Error getter
   static String? get lastError => _lastError;
 
   // ✅ isLoggedIn getter
@@ -689,23 +689,27 @@ class ApiService {
       return {'success': false, 'message': _lastError};
     }
   }
-Future<Map<String, dynamic>> deleteReview(int reviewId) async {
-  try {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/review/$reviewId'),
-      headers: _getHeaders(),
-    );
 
-    if (response.statusCode == 200) {
-      return {'success': true, 'message': 'İnceleme başarıyla silindi'};
-    } else {
-      final responseData = json.decode(response.body);
-      return {'success': false, 'message': responseData['error'] ?? 'Yorum silinemedi.'};
+  Future<Map<String, dynamic>> deleteReview(int reviewId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/review/$reviewId'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': 'İnceleme başarıyla silindi'};
+      } else {
+        final responseData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': responseData['error'] ?? 'Yorum silinemedi.',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Bağlantı hatası: $e'};
     }
-  } catch (e) {
-    return {'success': false, 'message': 'Bağlantı hatası: $e'};
   }
-}
 
   Future<List<dynamic>> searchProducts(String query) async {
     try {

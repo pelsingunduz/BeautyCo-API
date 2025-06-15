@@ -1,11 +1,13 @@
+import 'package:beautyco/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:logging/logging.dart';
 import '../models/product.dart';
 import '../services/api_service.dart';
-import 'product_detail_screen.dart'; 
+import 'product_detail_screen.dart';
 import 'create_post.dart';
 import 'home_page.dart';
-import '../theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -17,12 +19,12 @@ class SearchScreen extends StatefulWidget {
 class SearchScreenState extends State<SearchScreen> {
   final TextEditingController searchController = TextEditingController();
   // ✅ DÜZELTME 1: Instance yerine static method kullan
-  
+
   bool showClearButton = false;
   bool isLoading = false;
   bool hasSearched = false;
   String? errorMessage;
-  
+
   List<Product> searchResults = [];
   List<Product> allProducts = [];
 
@@ -50,12 +52,13 @@ class SearchScreenState extends State<SearchScreen> {
       // ✅ DÜZELTME 2: Static method kullan
       final productsResponse = await ApiService().getProducts();
       print('Products response: $productsResponse');
-      
+
       if (mounted) {
         setState(() {
-          allProducts = productsResponse.map<Product>((productData) {
-            return Product.fromJson(productData);
-          }).toList();
+          allProducts =
+              productsResponse.map<Product>((productData) {
+                return Product.fromJson(productData);
+              }).toList();
         });
         print('Loaded ${allProducts.length} products');
       }
@@ -93,23 +96,26 @@ class SearchScreenState extends State<SearchScreen> {
       print('=== SEARCH SCREEN DEBUG ===');
       print('1. Searching for: "$query"');
       print('2. Token exists: ${ApiService.isLoggedIn}');
-      
+
       // ✅ DÜZELTME 3: Instance oluştur ve kullan
       final apiService = ApiService();
       final searchResponse = await apiService.searchProducts(query);
-      
+
       print('3. API search response type: ${searchResponse.runtimeType}');
       print('4. API search response: $searchResponse');
-      
+
       // ✅ DÜZELTME 4: Response'un List olduğunu kontrol et
       if (searchResponse is! List) {
-        throw Exception('API response is not a list: ${searchResponse.runtimeType}');
+        throw Exception(
+          'API response is not a list: ${searchResponse.runtimeType}',
+        );
       }
-      
-      List<Product> results = searchResponse.map<Product>((productData) {
-        print('5. Converting product data: $productData');
-        return Product.fromJson(productData);
-      }).toList();
+
+      List<Product> results =
+          searchResponse.map<Product>((productData) {
+            print('5. Converting product data: $productData');
+            return Product.fromJson(productData);
+          }).toList();
 
       if (mounted) {
         setState(() {
@@ -119,7 +125,7 @@ class SearchScreenState extends State<SearchScreen> {
       }
 
       print('6. API search successful. Found ${results.length} results');
-      
+
       // ✅ DÜZELTME 5: Success mesajı göster
       if (results.isNotEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,31 +136,32 @@ class SearchScreenState extends State<SearchScreen> {
           ),
         );
       }
-      
     } catch (e) {
       print('7. API search failed: $e');
       print('8. Error type: ${e.runtimeType}');
-      
+
       // API search başarısız olursa, yerel arama yapalım
       try {
         List<Product> results = _performLocalSearch(query);
-        
+
         if (mounted) {
           setState(() {
             searchResults = results;
             isLoading = false;
           });
-          
+
           // Yerel arama kullanıldığını bildir
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Yerel arama kullanıldı. ${results.length} sonuç bulundu.'),
+              content: Text(
+                'Yerel arama kullanıldı. ${results.length} sonuç bulundu.',
+              ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 3),
             ),
           );
         }
-        
+
         print('9. Local search successful. Found ${results.length} results');
       } catch (localError) {
         print('10. Local search also failed: $localError');
@@ -172,17 +179,17 @@ class SearchScreenState extends State<SearchScreen> {
     if (allProducts.isEmpty) {
       throw Exception('Ürün verisi yüklenmemiş');
     }
-    
+
     final queryLower = query.toLowerCase();
-    
+
     return allProducts.where((product) {
       final name = product.name.toLowerCase();
       final brand = (product.brand ?? '').toLowerCase();
       final description = (product.description ?? '').toLowerCase();
-      
-      return name.contains(queryLower) || 
-             brand.contains(queryLower) || 
-             description.contains(queryLower);
+
+      return name.contains(queryLower) ||
+          brand.contains(queryLower) ||
+          description.contains(queryLower);
     }).toList();
   }
 
@@ -195,7 +202,6 @@ class SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  
   // ✅ DÜZELTME: Home sayfasına git
   void _navigateToHome() {
     Navigator.pushAndRemoveUntil(
@@ -208,31 +214,32 @@ class SearchScreenState extends State<SearchScreen> {
   void _showSampleSearches() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Örnek Aramalar',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Örnek Aramalar',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                ...['Chanel', 'Serum', 'Makyaj', 'Cilt Bakımı', 'Parfüm'].map(
+                  (sample) => ListTile(
+                    title: Text(sample),
+                    leading: const Icon(Icons.search),
+                    onTap: () {
+                      Navigator.pop(context);
+                      searchController.text = sample;
+                      performSearch();
+                    },
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            ...['Chanel', 'Serum', 'Makyaj', 'Cilt Bakımı', 'Parfüm'].map(
-              (sample) => ListTile(
-                title: Text(sample),
-                leading: const Icon(Icons.search),
-                onTap: () {
-                  Navigator.pop(context);
-                  searchController.text = sample;
-                  performSearch();
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -240,17 +247,24 @@ class SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: champagneGold,
         elevation: 0,
-        title: const Text(
-          'Ara',
-          style: TextStyle(color: Colors.black),
-        ),
-        iconTheme: const IconThemeData(color: Colors.black),
+        centerTitle: false, // ← ORTALAMAYI ENGELLE
+        automaticallyImplyLeading:
+            false, // ← çünkü custom leading kullanıyorsun
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _navigateToHome,
         ),
+        title: Text(
+          'Ara',
+          style: GoogleFonts.montserrat(
+            color: primaryRed,
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: primaryRed),
         actions: [
           if (allProducts.isNotEmpty)
             Padding(
@@ -258,17 +272,14 @@ class SearchScreenState extends State<SearchScreen> {
               child: Center(
                 child: Text(
                   '${allProducts.length} ürün',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ),
             ),
         ],
       ),
       body: Container(
-        color: Colors.white,
+        color: champagneGold,
         child: Column(
           children: [
             // Arama kutusu
@@ -290,19 +301,20 @@ class SearchScreenState extends State<SearchScreen> {
                       icon: const Icon(Icons.search, color: Colors.grey),
                       onPressed: performSearch,
                     ),
-                    suffixIcon: showClearButton
-                        ? IconButton(
-                            icon: const Icon(Icons.close, color: Colors.grey),
-                            onPressed: clearSearch,
-                          )
-                        : null,
+                    suffixIcon:
+                        showClearButton
+                            ? IconButton(
+                              icon: const Icon(Icons.close, color: Colors.grey),
+                              onPressed: clearSearch,
+                            )
+                            : null,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   autofocus: true,
                 ),
               ),
             ),
-            
+
             // Debug bilgisi (sadece development için)
             if (errorMessage != null)
               Container(
@@ -326,7 +338,7 @@ class SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-            
+
             if (!ApiService.isLoggedIn)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -349,11 +361,9 @@ class SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-            
+
             // Sonuçlar
-            Expanded(
-              child: _buildSearchResults(),
-            ),
+            Expanded(child: _buildSearchResults()),
           ],
         ),
       ),
@@ -379,27 +389,17 @@ class SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.search, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Aramak istediğiniz ürünü yazın',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
             if (allProducts.isNotEmpty)
               Text(
                 '${allProducts.length} ürün arasından arama yapabilirsiniz',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
               ),
           ],
         ),
@@ -411,27 +411,17 @@ class SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Aradığınız kriterlere uygun ürün bulunamadı',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Farklı kelimeler deneyebilirsiniz',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -535,20 +525,14 @@ class SearchScreenState extends State<SearchScreen> {
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          Icons.image,
-          color: Colors.grey[400],
-          size: 30,
-        ),
+        child: Icon(Icons.image, color: Colors.grey[400], size: 30),
       );
     }
 
     return Container(
       width: 60,
       height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
@@ -582,10 +566,11 @@ class SearchScreenState extends State<SearchScreen> {
               ),
               child: Center(
                 child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
+                  value:
+                      loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
                   strokeWidth: 2,
                 ),
               ),

@@ -1,8 +1,9 @@
+import 'package:beautyco/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
-import '../models/user.dart' hide Product;  // Product'ı user.dart'tan gizle
-import '../models/product.dart';  // Product'ı product.dart'tan al
+import '../models/user.dart' hide Product; // Product'ı user.dart'tan gizle
+import '../models/product.dart'; // Product'ı product.dart'tan al
 import 'edit_profile_screen.dart';
 import 'package:intl/intl.dart';
 import 'product_detail_screen.dart';
@@ -311,7 +312,7 @@ class ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return isLoading
-        ? const Center(child: CircularProgressIndicator(color: Colors.pink))
+        ? const Center(child: CircularProgressIndicator(color: primaryRed))
         : errorMessage != null
         ? _buildErrorState()
         : userData == null
@@ -353,7 +354,7 @@ class ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: _initializeProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink,
+              backgroundColor: primaryRed,
               foregroundColor: Colors.white,
             ),
             child: const Text('Tekrar Dene'),
@@ -397,7 +398,7 @@ class ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: _initializeProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pink,
+              backgroundColor: primaryRed,
               foregroundColor: Colors.white,
             ),
             child: const Text('Tekrar Dene'),
@@ -421,7 +422,7 @@ class ProfileScreenState extends State<ProfileScreen>
             height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.pink.shade100, width: 2),
+              border: Border.all(color: primaryRed, width: 2),
               image:
                   userData!.profilePhoto != null
                       ? DecorationImage(
@@ -435,7 +436,7 @@ class ProfileScreenState extends State<ProfileScreen>
             ),
             child:
                 userData!.profilePhoto == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.pink)
+                    ? const Icon(Icons.person, size: 50, color: primaryRed)
                     : null,
           ),
           const SizedBox(width: 20),
@@ -491,10 +492,10 @@ class ProfileScreenState extends State<ProfileScreen>
                     decoration: BoxDecoration(
                       color:
                           isCurrentUser
-                              ? Colors.pink
+                              ? primaryRed
                               : isFollowing
                               ? Colors.grey
-                              : Colors.pink,
+                              : primaryRed,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -602,7 +603,7 @@ class ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.email, size: 16, color: Colors.pink),
+              const Icon(Icons.email, size: 16, color: primaryRed),
               const SizedBox(width: 4),
               Text(
                 userData!.email,
@@ -681,9 +682,7 @@ class ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildFavoritesTab() {
-    final allFavorites = [
-      ...userFavorites,
-    ];
+    final allFavorites = [...userFavorites];
     if (allFavorites.isEmpty) {
       return Center(
         child: Column(
@@ -715,7 +714,8 @@ class ProfileScreenState extends State<ProfileScreen>
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               onTap: () {
-                final dynamic rawProductId = favorite['product_id'] ?? favorite['id'];
+                final dynamic rawProductId =
+                    favorite['product_id'] ?? favorite['id'];
                 int? parsedProductId;
 
                 if (rawProductId is int) {
@@ -727,36 +727,49 @@ class ProfileScreenState extends State<ProfileScreen>
                 if (parsedProductId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Favori yorumu için ürün ID'si bulunamadı veya geçersiz."),
+                      content: Text(
+                        "Favori yorumu için ürün ID'si bulunamadı veya geçersiz.",
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );
-                  debugPrint("DEBUG: Favori yorumu için ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+                  debugPrint(
+                    "DEBUG: Favori yorumu için ürün ID'si null veya geçersiz. rawProductId: $rawProductId",
+                  );
                   return;
                 }
 
-                debugPrint('DEBUG: Before Product constructor (review tab) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+                debugPrint(
+                  'DEBUG: Before Product constructor (review tab) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})',
+                );
                 final int productIdForReviewNav = parsedProductId as int;
 
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProductDetailScreen(
-                      product: Product(
-                        id: parsedProductId ?? 0,
-                        name: favorite['product_name'] ?? favorite['name'] ?? 'Ürün Adı',
-                        brand: favorite['brand'],
-                        description: favorite['description'],
-                        categoryId: favorite['category_id'],
-                        averageRating: favorite['average_rating']?.toDouble(),
-                        productPhoto: favorite['product_photo'],
-                      ),
-                    ),
+                    builder:
+                        (context) => ProductDetailScreen(
+                          product: Product(
+                            id: parsedProductId ?? 0,
+                            name:
+                                favorite['product_name'] ??
+                                favorite['name'] ??
+                                'Ürün Adı',
+                            brand: favorite['brand'],
+                            description: favorite['description'],
+                            categoryId: favorite['category_id'],
+                            averageRating:
+                                favorite['average_rating']?.toDouble(),
+                            productPhoto: favorite['product_photo'],
+                          ),
+                        ),
                   ),
                 );
               },
               leading: const Icon(Icons.favorite, color: Colors.pink),
-              title: Text(favorite['product_name'] ?? favorite['name'] ?? 'Ürün Adı'),
+              title: Text(
+                favorite['product_name'] ?? favorite['name'] ?? 'Ürün Adı',
+              ),
               subtitle: Text(favorite['content'] ?? ''),
             ),
           );
@@ -833,17 +846,20 @@ class ProfileScreenState extends State<ProfileScreen>
 
                     if (confirm == true) {
                       try {
-                        final result = await _apiService.deleteReview(review.id);
-                        
+                        final result = await _apiService.deleteReview(
+                          review.id,
+                        );
+
                         if (result['success'] == true) {
                           // Sadece user profile'ı yeniden yükle
                           if (userData != null) {
-                            final updatedUserData = await _apiService.getUserProfile(userData!.id.toString());
+                            final updatedUserData = await _apiService
+                                .getUserProfile(userData!.id.toString());
                             setState(() {
                               userData = updatedUserData;
                             });
                           }
-                          
+
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -856,7 +872,9 @@ class ProfileScreenState extends State<ProfileScreen>
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(result['message'] ?? 'Silme işlemi başarısız'),
+                                content: Text(
+                                  result['message'] ?? 'Silme işlemi başarısız',
+                                ),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -903,28 +921,33 @@ class ProfileScreenState extends State<ProfileScreen>
                 backgroundColor: Colors.red,
               ),
             );
-            debugPrint("DEBUG: Ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+            debugPrint(
+              "DEBUG: Ürün ID'si null veya geçersiz. rawProductId: $rawProductId",
+            );
             return;
           }
 
-          debugPrint('DEBUG: Before Product constructor (favorite item) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+          debugPrint(
+            'DEBUG: Before Product constructor (favorite item) - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})',
+          );
           final int productIdForNavigation = parsedProductId as int;
 
           // Ürün detay sayfasına yönlendir
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProductDetailScreen(
-                product: Product(
-                  id: parsedProductId ?? 0,
-                  name: favorite['name'] ?? 'Ürün Adı',
-                  brand: favorite['brand'],
-                  description: favorite['description'],
-                  categoryId: favorite['category_id'],
-                  averageRating: favorite['average_rating']?.toDouble(),
-                  productPhoto: favorite['product_photo'],
-                ),
-              ),
+              builder:
+                  (context) => ProductDetailScreen(
+                    product: Product(
+                      id: parsedProductId ?? 0,
+                      name: favorite['name'] ?? 'Ürün Adı',
+                      brand: favorite['brand'],
+                      description: favorite['description'],
+                      categoryId: favorite['category_id'],
+                      averageRating: favorite['average_rating']?.toDouble(),
+                      productPhoto: favorite['product_photo'],
+                    ),
+                  ),
             ),
           );
         },
@@ -982,7 +1005,8 @@ class ProfileScreenState extends State<ProfileScreen>
                 ? IconButton(
                   icon: const Icon(Icons.favorite, color: Colors.pink),
                   onPressed: () {
-                    final dynamic rawProductId = favorite['product_id'] ?? favorite['id'];
+                    final dynamic rawProductId =
+                        favorite['product_id'] ?? favorite['id'];
                     int? parsedProductId;
 
                     if (rawProductId is int) {
@@ -994,14 +1018,20 @@ class ProfileScreenState extends State<ProfileScreen>
                     if (parsedProductId == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("Favori kaldırmak için ürün ID'si bulunamadı veya geçersiz."),
+                          content: Text(
+                            "Favori kaldırmak için ürün ID'si bulunamadı veya geçersiz.",
+                          ),
                           backgroundColor: Colors.red,
                         ),
                       );
-                      debugPrint("DEBUG: Favori kaldırma için ürün ID'si null veya geçersiz. rawProductId: $rawProductId");
+                      debugPrint(
+                        "DEBUG: Favori kaldırma için ürün ID'si null veya geçersiz. rawProductId: $rawProductId",
+                      );
                       return;
                     }
-                    debugPrint('DEBUG: Before _toggleFavorite - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})');
+                    debugPrint(
+                      'DEBUG: Before _toggleFavorite - parsedProductId: $parsedProductId (type: ${parsedProductId.runtimeType})',
+                    );
                     final int productIdForToggle = parsedProductId as int;
                     _toggleFavorite(productIdForToggle);
                   },
