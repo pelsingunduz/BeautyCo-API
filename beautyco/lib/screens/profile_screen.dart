@@ -11,11 +11,13 @@ import 'product_detail_screen.dart';
 class ProfileScreen extends StatefulWidget {
   final String? userId;
   final bool isCurrentUser;
+  final Function(int)? onReviewDeleted; // Callback parametresi eklendi
 
   const ProfileScreen({
     super.key,
     this.userId,
-    this.isCurrentUser = false, // Varsayılan olarak false yapıldı
+    this.isCurrentUser = false,
+    this.onReviewDeleted, // Callback parametresi
   });
 
   @override
@@ -309,10 +311,10 @@ class ProfileScreenState extends State<ProfileScreen>
     return isCurrentUser;
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     return isLoading
-        ? const Center(child: CircularProgressIndicator(color: primaryRed))
+        ? const Center(child: CircularProgressIndicator(color: Colors.pink))
         : errorMessage != null
         ? _buildErrorState()
         : userData == null
@@ -334,6 +336,7 @@ class ProfileScreenState extends State<ProfileScreen>
         );
   }
 
+
   Widget _buildNoDataState() {
     return Center(
       child: Column(
@@ -354,7 +357,7 @@ class ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: _initializeProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryRed,
+              backgroundColor: Colors.pink,
               foregroundColor: Colors.white,
             ),
             child: const Text('Tekrar Dene'),
@@ -398,7 +401,7 @@ class ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: _initializeProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryRed,
+              backgroundColor: Colors.pink,
               foregroundColor: Colors.white,
             ),
             child: const Text('Tekrar Dene'),
@@ -822,44 +825,53 @@ class ProfileScreenState extends State<ProfileScreen>
               if (_isCurrentUserProfile)
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
+                  
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
-                      builder:
-                          (_) => AlertDialog(
-                            title: const Text('İncelemeyi Sil'),
-                            content: const Text(
-                              'Bu incelemeyi silmek istediğinize emin misiniz?',
-                            ),
-                            actions: [
-                              TextButton(
-                                child: const Text('İptal'),
-                                onPressed: () => Navigator.pop(context, false),
-                              ),
-                              TextButton(
-                                child: const Text('Sil'),
-                                onPressed: () => Navigator.pop(context, true),
-                              ),
-                            ],
+                      builder: (_) => AlertDialog(
+                        title: const Text('İncelemeyi Sil'),
+                        content: const Text(
+                          'Bu incelemeyi silmek istediğinize emin misiniz?',
+                        ),
+                        actions: [
+                          TextButton(
+                            child: const Text('İptal'),
+                            onPressed: () => Navigator.pop(context, false),
                           ),
+                          TextButton(
+                            child: const Text('Sil'),
+                            onPressed: () => Navigator.pop(context, true),
+                          ),
+                        ],
+                      ),
                     );
 
                     if (confirm == true) {
                       try {
-                        final result = await _apiService.deleteReview(
-                          review.id,
-                        );
-
+                        debugPrint('🗑️ ProfileScreen: Review siliniyor, ID: ${review.id}');
+                        
+                        final result = await _apiService.deleteReview(review.id);
+                        
                         if (result['success'] == true) {
-                          // Sadece user profile'ı yeniden yükle
+                          debugPrint('✅ ProfileScreen: Review başarıyla silindi, ID: ${review.id}');
+                          
+                          // 1. Callback'i çağır (HomeScreen'e bildir)
+                          if (widget.onReviewDeleted != null) {
+                            debugPrint('📞 ProfileScreen: HomeScreen callback çağrılıyor...');
+                            widget.onReviewDeleted!(review.id);
+                          }
+                          
+                          // 2. ProfileScreen'i güncelle
                           if (userData != null) {
-                            final updatedUserData = await _apiService
-                                .getUserProfile(userData!.id.toString());
+                            debugPrint('🔄 ProfileScreen: Profil güncelleniyor...');
+                            final updatedUserData = await _apiService.getUserProfile(userData!.id.toString());
                             setState(() {
                               userData = updatedUserData;
                             });
+                            debugPrint('✅ ProfileScreen: Profil güncellendi');
                           }
-
+                          
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -869,18 +881,18 @@ class ProfileScreenState extends State<ProfileScreen>
                             );
                           }
                         } else {
+                          debugPrint('❌ ProfileScreen: Review silme başarısız: ${result['message']}');
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(
-                                  result['message'] ?? 'Silme işlemi başarısız',
-                                ),
+                                content: Text(result['message'] ?? 'Silme işlemi başarısız'),
                                 backgroundColor: Colors.red,
                               ),
                             );
                           }
                         }
                       } catch (e) {
+                        debugPrint('❌ ProfileScreen: Review silme hatası: $e');
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -891,13 +903,82 @@ class ProfileScreenState extends State<ProfileScreen>
                         }
                       }
                     }
-                  },
+                  }
                 ),
             ],
           ),
         ],
       ),
     );
+  }
+  Future<void> _deleteReview(int reviewId) async {
+    try {
+      // Kullanıcıdan onay al
+      final bool? shouldDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('İncelemeyi Sil'),
+            content: const Text('Bu incelemeyi silmek istediğinizden emin misiniz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('İptal'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Sil'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldDelete != true) return;
+
+      // API'den review'i sil
+      final result = await _apiService.deleteReview(reviewId);
+
+      if (result['success']) {
+        // Local listeden kaldır
+        setState(() {
+          userReviews.removeWhere((review) => review['id'] == reviewId);
+        });
+
+        // HomePage'e callback gönder
+        if (widget.onReviewDeleted != null) {
+          widget.onReviewDeleted!(reviewId);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('İnceleme başarıyla silindi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'İnceleme silinemedi'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildFavoriteItem(Map<String, dynamic> favorite) {

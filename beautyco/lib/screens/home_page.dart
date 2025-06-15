@@ -5,7 +5,6 @@ import 'package:beautyco/screens/create_post.dart';
 import 'package:beautyco/screens/search_screen.dart';
 import 'package:beautyco/theme.dart';
 import '../services/api_service.dart';
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -14,6 +13,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   String _selectedCategory = 'TÜM';
   final TextEditingController _commentController = TextEditingController();
@@ -21,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = true;
   String? _currentUserId;
-
   List<Map<String, dynamic>> _posts = [];
 
   final List<String> _categories = [
@@ -46,42 +45,50 @@ class _HomeScreenState extends State<HomeScreen> {
     await _fetchFavoritedProducts();
   }
 
+ void _forceRefresh() {
+    if (mounted) {
+      setState(() {
+        // Boş setState ile ekranı zorla yenile
+      });
+      // Ayrıca post'ları da yeniden yükle
+      _fetchFeedPosts();
+    }
+  }
   Future<void> _fetchFavoritedProducts() async {
     try {
       final fetchedFavorites = await _apiService.getFavorites();
       setState(() {
-        _favoritedProductIds =
-            fetchedFavorites
-                .map<int>((fav) => fav['product_id'] as int)
-                .toSet();
+        _favoritedProductIds = fetchedFavorites
+            .map<int>((fav) => fav['product_id'] as int)
+            .toSet();
       });
     } catch (e) {
       debugPrint('Favori ürünleri çekerken hata: $e');
     }
   }
 
-  Future<void> _fetchFeedPosts() async {
+Future<void> _fetchFeedPosts() async {
     setState(() {
       _isLoading = true;
     });
     try {
       final fetchedPosts = await _apiService.getFeedPosts();
       setState(() {
-        _posts =
-            fetchedPosts.map<Map<String, dynamic>>((post) {
-              return {
-                'username': post['username'] ?? 'Bilinmeyen Kullanıcı',
-                'product': post['product_name'] ?? 'Ürün Adı',
-                'content': post['content'] ?? 'İnceleme metni yok.',
-                'category': post['category_name'] ?? 'Genel',
-                'showCommentField': false,
-                'comments': [],
-                'rating': post['rating'] ?? 0.0,
-                'brand': post['brand'] ?? 'Marka Yok',
-                'productPhoto': post['product_photo'] ?? '',
-                'product_id': post['product_id'],
-              };
-            }).toList();
+        _posts = fetchedPosts.map<Map<String, dynamic>>((post) {
+          return {
+            'username': post['username'] ?? 'Bilinmeyen Kullanıcı',
+            'product': post['product_name'] ?? 'Ürün Adı',
+            'content': post['content'] ?? 'İnceleme metni yok.',
+            'category': post['category_name'] ?? 'Genel',
+            'showCommentField': false,
+            'comments': [],
+            'rating': post['rating'] ?? 0.0,
+            'brand': post['brand'] ?? 'Marka Yok',
+            'productPhoto': post['product_photo'] ?? '',
+            'product_id': post['product_id'],
+            'review_id': post['id'], // Review ID'sini ekliyoruz
+          };
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -96,6 +103,24 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       });
     }
+  }
+
+  // Review silme callback fonksiyonu
+   void _onReviewDeleted(int reviewId) {
+    debugPrint('🗑️ HomeScreen: Review silindi, ID: $reviewId');
+    
+    // Ana thread'de çalıştır
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _posts.removeWhere((post) => post['review_id'] == reviewId);
+        });
+        debugPrint('✅ HomeScreen: Post feed güncellendi, kalan post sayısı: ${_posts.length}');
+        
+        // Ekranı zorla yenile
+        _forceRefresh();
+      }
+    });
   }
 
   void _onItemTapped(int index) async {
@@ -118,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'comments': [],
             'showCommentField': false,
             'product_id': null,
+            'review_id': null, // Yeni post için review_id null
           });
           _selectedCategory = 'TÜM';
           _selectedIndex = 0;
@@ -129,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
 
   Widget _buildCategoryButton(String title) {
     final bool isSelected = _selectedCategory == title;
@@ -166,298 +193,284 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+Widget _buildPostCard(Map<String, dynamic> post) {
+  final int? productId = post['product_id'] as int?;
 
-  Widget _buildPostCard(Map<String, dynamic> post, int index) {
-    final int? productId = post['product_id'] as int?;
-
-    return Stack(
-      children: [
-        Card(
-          elevation: 4,
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const CircleAvatar(child: Icon(Icons.person)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            post['username'] ?? 'Anonim',
-                            style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.bold,
-                            ),
+  return Stack(
+    children: [
+      Card(
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const CircleAvatar(child: Icon(Icons.person)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post['username'] ?? 'Anonim',
+                          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${post['brand'] ?? ''} - ${post['product'] ?? 'Ürün Adı' }',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 12,
+                            color: Colors.grey[600],
                           ),
-                          Text(
-                            '${post['brand'] ?? ''} - ${post['product'] ?? 'Ürün Adı'}',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          if (post['rating'] != null && post['rating'] > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.star, color: primaryRed, size: 16),
-                                  Text(
-                                    ' ${post['rating'].toStringAsFixed(1)}',
-                                    style: GoogleFonts.montserrat(
-                                      color: primaryRed,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                        ),
+                        if (post['rating'] != null && post['rating'] > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.star, color: primaryRed, size: 16),
+                                Text(
+                                  ' ${post['rating'].toStringAsFixed(1)}',
+                                  style: GoogleFonts.montserrat(
+                                    color: primaryRed,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        productId != null &&
-                                _favoritedProductIds.contains(productId)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: Colors.pink,
-                        size: 28,
-                      ),
-                      onPressed: () async {
-                        if (productId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ürün ID\'si bulunamadı.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-
-                        try {
-                          if (_favoritedProductIds.contains(productId)) {
-                            await _apiService.removeFavorite(productId);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Favorilerden çıkarıldı'),
-                                backgroundColor: Colors.pink,
-                              ),
-                            );
-                          } else {
-                            await _apiService.addFavorite(productId);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Favorilere eklendi'),
-                                backgroundColor: Colors.pink,
-                              ),
-                            );
-                          }
-                          await _fetchFavoritedProducts();
-                        } catch (e) {
-                          debugPrint('Favori işlemi hatası: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Favori işlemi sırasında hata oluştu: $e',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (post['productPhoto'] != null &&
-                    post['productPhoto'].isNotEmpty)
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: NetworkImage(post['productPhoto']),
-                        fit: BoxFit.cover,
-                        onError: (exception, stackTrace) {
-                          debugPrint('Resim yüklenirken hata: $exception');
-                        },
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    height: 200,
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: Icon(Icons.photo, size: 50, color: Colors.grey),
+                          ),
+                      ],
                     ),
                   ),
-                const SizedBox(height: 10),
-                Text(
-                  post['content'] ?? 'İnceleme metni bulunamadı.',
-                  style: GoogleFonts.montserrat(fontSize: 14),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Kategori: ${post['category'] ?? 'Belirtilmemiş'}',
-                      style: GoogleFonts.montserrat(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(
+                      productId != null && _favoritedProductIds.contains(productId)
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: Colors.pink,
+                      size: 28,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _posts[index]['showCommentField'] =
-                              !post['showCommentField'];
-                          if (!post['showCommentField']) {
+                    onPressed: () async {
+                      if (productId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ürün ID\'si bulunamadı.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        if (_favoritedProductIds.contains(productId)) {
+                          await _apiService.removeFavorite(productId);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Favorilerden çıkarıldı'),
+                              backgroundColor: Colors.pink,
+                            ),
+                          );
+                        } else {
+                          await _apiService.addFavorite(productId);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Favorilere eklendi'),
+                              backgroundColor: Colors.pink,
+                            ),
+                          );
+                        }
+                        await _fetchFavoritedProducts();
+                      } catch (e) {
+                        debugPrint('Favori işlemi hatası: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Favori işlemi sırasında hata oluştu: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (post['productPhoto'] != null && post['productPhoto'].isNotEmpty)
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: NetworkImage(post['productPhoto']),
+                      fit: BoxFit.cover,
+                      onError: (exception, stackTrace) {
+                        debugPrint('Resim yüklenirken hata: $exception');
+                      },
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: const Center(child: Icon(Icons.photo, size: 50, color: Colors.grey)),
+                ),
+              const SizedBox(height: 10),
+              Text(
+                post['content'] ?? 'İnceleme metni bulunamadı.',
+                style: GoogleFonts.montserrat(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Kategori: ${post['category'] ?? 'Belirtilmemiş'}',
+                    style: GoogleFonts.montserrat(color: Colors.grey[600], fontSize: 12),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        // Ana _posts listesindeki doğru post'u bulup güncelle
+                        final postIndex = _posts.indexWhere((p) => 
+                          p['review_id'] == post['review_id'] || 
+                          (p['username'] == post['username'] && 
+                           p['product'] == post['product'] && 
+                           p['content'] == post['content'])
+                        );
+                        
+                        if (postIndex != -1) {
+                          _posts[postIndex]['showCommentField'] = !_posts[postIndex]['showCommentField'];
+                          if (!_posts[postIndex]['showCommentField']) {
                             _commentController.clear();
                           }
-                        });
-                      },
-                      child: Text(
-                        post['showCommentField'] ? 'Yorumu Kapat' : 'Yorum Yap',
-                        style: const TextStyle(color: primaryRed),
-                      ),
+                        }
+                      });
+                    },
+                    child: Text(
+                      post['showCommentField'] ? 'Yorumu Kapat' : 'Yorum Yap',
+                      style: const TextStyle(color: primaryRed),
                     ),
-                  ],
-                ),
-                if (post['showCommentField'])
-                  Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _commentController,
-                        decoration: InputDecoration(
-                          hintText: 'Yorumunuzu yazın...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.all(8),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.send, color: primaryRed),
-                            onPressed: () {
-                              if (_commentController.text.trim().isNotEmpty) {
-                                setState(() {
-                                  if (!_posts[index].containsKey('comments')) {
-                                    _posts[index]['comments'] = [];
+                  ),
+                ],
+              ),
+              if (post['showCommentField'])
+                Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _commentController,
+                      decoration: InputDecoration(
+                        hintText: 'Yorumunuzu yazın...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.all(8),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.send, color: primaryRed),
+                          onPressed: () {
+                            if (_commentController.text.trim().isNotEmpty) {
+                              setState(() {
+                                // Ana _posts listesindeki doğru post'u bulup güncelle
+                                final postIndex = _posts.indexWhere((p) => 
+                                  p['review_id'] == post['review_id'] || 
+                                  (p['username'] == post['username'] && 
+                                   p['product'] == post['product'] && 
+                                   p['content'] == post['content'])
+                                );
+                                
+                                if (postIndex != -1) {
+                                  if (!_posts[postIndex].containsKey('comments')) {
+                                    _posts[postIndex]['comments'] = [];
                                   }
-                                  _posts[index]['comments'].add({
+                                  _posts[postIndex]['comments'].add({
                                     'username': 'sen',
                                     'content': _commentController.text.trim(),
                                     'timestamp': DateTime.now().toString(),
                                   });
                                   _commentController.clear();
-                                });
-                              }
-                            },
-                          ),
+                                }
+                              });
+                            }
+                          },
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      if (post['comments'] != null &&
-                          post['comments'].isNotEmpty)
-                        Column(
-                          children: [
-                            const Divider(),
-                            ...post['comments']
-                                .map<Widget>(
-                                  (comment) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const CircleAvatar(
-                                          radius: 12,
-                                          child: Icon(Icons.person, size: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    if (post['comments'] != null && post['comments'].isNotEmpty)
+                      Column(
+                        children: [
+                          const Divider(),
+                          ...post['comments'].map<Widget>((comment) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const CircleAvatar(
+                                  radius: 12,
+                                  child: Icon(Icons.person, size: 16),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        comment['username'],
+                                        style: GoogleFonts.montserrat(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                comment['username'],
-                                                style: GoogleFonts.montserrat(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                              Text(
-                                                comment['content'],
-                                                style: GoogleFonts.montserrat(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      Text(
+                                        comment['content'],
+                                        style: GoogleFonts.montserrat(fontSize: 12),
+                                      ),
+                                    ],
                                   ),
-                                )
-                                .toList(),
-                          ],
-                        ),
-                    ],
-                  ),
-              ],
-            ),
+                                ),
+                              ],
+                            ),
+                          )).toList(),
+                        ],
+                      ),
+                  ],
+                ),
+            ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   @override
   Widget build(BuildContext context) {
-    final filteredPosts =
-        _selectedCategory == 'TÜM'
-            ? _posts
-            : _posts
-                .where((post) => post['category'] == _selectedCategory)
-                .toList();
+    final filteredPosts = _selectedCategory == 'TÜM'
+        ? _posts
+        : _posts.where((post) => post['category'] == _selectedCategory).toList();
 
     final List<Widget> _screens = [
       _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryRed))
           : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 12), // ← AppBar ile kategori arası boşluk
-              SizedBox(
-                height: 50,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _categories.length,
-                  itemBuilder:
-                      (context, index) =>
-                          _buildCategoryButton(_categories[index]),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 50,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) =>
+                        _buildCategoryButton(_categories[index]),
+                  ),
                 ),
-              ),
-              const Divider(),
-              Expanded(
-                child:
-                    filteredPosts.isEmpty
-                        ? Center(
+                const Divider(),
+                Expanded(
+                  child: filteredPosts.isEmpty
+                      ? Center(
                           child: Text(
                             'Henüz gönderi yok.',
                             style: GoogleFonts.montserrat(
@@ -466,18 +479,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         )
-                        : ListView.builder(
+                      : ListView.builder(
                           itemCount: filteredPosts.length,
-                          itemBuilder:
-                              (context, index) =>
-                                  _buildPostCard(filteredPosts[index], index),
+                          itemBuilder: (context, index) =>
+                              _buildPostCard(filteredPosts[index]), // index parametresini kaldırdık
                         ),
-              ),
-            ],
-          ),
-      const CreatePostScreen(),
+                ),
+              ],
+            ),
+      const CreatePostScreen(), 
       const SearchScreen(),
-      ProfileScreen(isCurrentUser: true),
+      // ProfileScreen'e callback'i geçiriyoruz
+      ProfileScreen(
+        isCurrentUser: true,
+        onReviewDeleted: _onReviewDeleted, // Callback'i geçiriyoruz
+      ),
     ];
 
     return Scaffold(
@@ -501,48 +517,35 @@ class _HomeScreenState extends State<HomeScreen> {
   AppBar _buildAppBar() {
     if (_selectedIndex == 3) {
       return AppBar(
-        backgroundColor: champagneGold,
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        toolbarHeight: 60,
-        title: Padding(
-          padding: const EdgeInsets.only(left: 8.0),
-          child: Text(
-            'Profil',
-            style: TextStyle(
-              color: primaryRed,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              fontFamily: 'Montserrat',
-            ),
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Montserrat',
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: primaryRed),
+            icon: const Icon(Icons.settings_outlined, color: Colors.black),
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
           ),
         ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(0.5), // AppBar'a minimum etki
-          child: Divider(
-            height: 0.5, // Daha yukarı yerleşsin
-            thickness: 1,
-            color: Colors.black12,
-          ),
-        ),
       );
     } else {
       return AppBar(
         backgroundColor: primaryRed,
-        centerTitle: true,
         title: Text(
           'BeautyCo',
           style: GoogleFonts.pacifico(color: Colors.white),
         ),
+        centerTitle: true,
       );
     }
   }
 }
+

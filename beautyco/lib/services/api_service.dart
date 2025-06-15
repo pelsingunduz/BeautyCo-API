@@ -833,28 +833,55 @@ class ApiService {
     _lastError = null;
   }
 
-  // Ana Sayfa Akışı için İncelemeleri Getir
-  Future<List<dynamic>> getFeedPosts() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/feed'),
-        headers: _getHeaders(),
-      );
+ Future<List<dynamic>> getFeedPosts() async {
+  try {
+    print('=== GET FEED POSTS DEBUG START ===');
+    print('1. Token mevcut: ${_authToken != null}');
+    print('2. Base URL: $baseUrl');
+    
+    final response = await http.get(
+      Uri.parse('$baseUrl/feed'),
+      headers: _getHeaders(),
+    );
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 401) {
-        _lastError = 'Kimlik doğrulama gerekli.';
-        throw Exception('Authentication required.');
-      } else {
-        _lastError = 'Akış gönderileri yüklenirken hata oluştu.';
-        throw Exception('Failed to load feed posts.');
+    print('3. Response status: ${response.statusCode}');
+    print('4. Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('5. Parsed data: $data');
+      
+      // Gelen verinin review_id içerdiğinden emin olun
+      if (data is List && data.isNotEmpty) {
+        print('6. First post structure: ${data.first}');
+        
+        // Eğer review_id yoksa, id'yi review_id olarak kullan
+        for (var post in data) {
+          if (post['review_id'] == null && post['id'] != null) {
+            post['review_id'] = post['id'];
+            print('7. review_id eklendi: ${post['review_id']}');
+          }
+        }
       }
-    } catch (e) {
-      _lastError = 'Akış gönderileri yüklenirken hata oluştu: $e';
-      throw Exception(_lastError);
+      
+      return data;
+    } else if (response.statusCode == 401) {
+      _lastError = 'Kimlik doğrulama gerekli.';
+      throw Exception('Authentication required.');
+    } else {
+      _lastError = 'Akış gönderileri yüklenirken hata oluştu.';
+      throw Exception('Failed to load feed posts.');
     }
+  } catch (e) {
+    print('=== GET FEED POSTS ERROR ===');
+    print('Error: $e');
+    _lastError = 'Akış gönderileri yüklenirken hata oluştu: $e';
+    throw Exception(_lastError);
+  } finally {
+    print('=== GET FEED POSTS DEBUG END ===');
   }
+}
+
 
   Future<Map<String, dynamic>> updateProfile(
     String userId,
