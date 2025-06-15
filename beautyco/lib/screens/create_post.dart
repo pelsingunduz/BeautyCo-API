@@ -280,6 +280,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           'rating': _rating,
           'brand': _selectedProduct!.brand,
           'productPhoto': _selectedProduct!.productPhoto,
+          'product_id': _selectedProduct!.id,
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
